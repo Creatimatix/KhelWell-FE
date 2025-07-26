@@ -71,9 +71,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
   };
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
+
 
   const renderNavigationItems = () => {
     if (!user) {

@@ -28,6 +28,7 @@
     }
   ],
   "env": {
-    "REACT_APP_API_URL": "https://khelwell-be.vercel.app"
+    "REACT_APP_API_URL": "https://khelwell-be.vercel.app",
+    "CI": "false"
   }
 } 
