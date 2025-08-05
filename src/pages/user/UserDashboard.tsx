@@ -362,18 +362,18 @@ const UserDashboard: React.FC = () => {
                       <Box display="flex" alignItems="center" mb={1}>
                         <LocationIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
                         <Typography variant="body2" color="text.secondary">
-                          {turf.location.city}
+                          {turf.location?.city || 'Location not available'}
                         </Typography>
                       </Box>
                       <Box display="flex" alignItems="center" mb={2}>
-                        <Rating value={turf.rating.average} readOnly size="small" />
+                        <Rating value={turf.rating?.average || 0} readOnly size="small" />
                         <Typography variant="body2" sx={{ ml: 1 }}>
-                          ({turf.rating.count})
+                          ({turf.rating?.count || 0})
                         </Typography>
                       </Box>
                       <Box display="flex" justifyContent="space-between" alignItems="center">
                         <Typography variant="h6" color="primary">
-                          ₹{turf.pricing.hourlyRate}/hr
+                          ₹{turf.pricing?.hourlyRate || 0}/hr
                         </Typography>
                         <Button
                           variant="contained"
@@ -502,7 +502,7 @@ const UserDashboard: React.FC = () => {
                             {formatDate(booking.date)} • {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {booking.turf.location.city} • ₹{booking.totalAmount}
+                            {booking.turf.location?.city || 'Location not available'} • ₹{booking.totalAmount}
                           </Typography>
                         </Box>
                       }

@@ -228,20 +228,20 @@ const TurfListPage: React.FC = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                       <LocationOn sx={{ fontSize: 16, color: 'text.secondary', mr: 0.5 }} />
                       <Typography variant="body2" color="text.secondary">
-                        {turf.location.city}, {turf.location.state}
+                        {turf.location?.city || 'City'}, {turf.location?.state || 'State'}
                       </Typography>
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Rating value={turf.rating.average} precision={0.5} readOnly size="small" />
+                      <Rating value={turf.rating?.average || 0} precision={0.5} readOnly size="small" />
                       <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                        ({turf.rating.count} reviews)
+                        ({turf.rating?.count || 0} reviews)
                       </Typography>
                     </Box>
 
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Typography variant="h6" color="primary">
-                        {formatPrice(turf.pricing.hourlyRate)}
+                        {formatPrice(turf.pricing?.hourlyRate || 0)}
                       </Typography>
                       <Button
                         variant="contained"

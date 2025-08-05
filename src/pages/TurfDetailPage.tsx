@@ -152,7 +152,7 @@ const TurfDetailPage: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <LocationOn sx={{ color: 'text.secondary', mr: 1 }} />
             <Typography variant="body1" color="text.secondary">
-              {turf.location.address}, {turf.location.city}, {turf.location.state} - {turf.location.zipCode}
+                                  {turf.location?.address || 'Address'}, {turf.location?.city || 'City'}, {turf.location?.state || 'State'} - {turf.location?.zipCode || 'ZIP'}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -162,9 +162,9 @@ const TurfDetailPage: React.FC = () => {
               color="primary"
               variant="outlined"
             />
-            <Rating value={turf.rating.average} precision={0.5} readOnly />
+            <Rating value={turf.rating?.average || 0} precision={0.5} readOnly />
             <Typography variant="body2" color="text.secondary">
-              ({turf.rating.count} reviews)
+              ({turf.rating?.count || 0} reviews)
             </Typography>
           </Box>
         </Box>
@@ -215,7 +215,7 @@ const TurfDetailPage: React.FC = () => {
                         </ListItemIcon>
                         <ListItemText
                           primary="Price"
-                          secondary={formatPrice(turf.pricing.hourlyRate)}
+                          secondary={formatPrice(turf.pricing?.hourlyRate || 0)}
                         />
                       </ListItem>
                     </List>
@@ -323,7 +323,7 @@ const TurfDetailPage: React.FC = () => {
             <Card sx={{ position: 'sticky', top: 20 }}>
               <CardContent>
                 <Typography variant="h4" color="primary" gutterBottom>
-                  {formatPrice(turf.pricing.hourlyRate)}
+                  {formatPrice(turf.pricing?.hourlyRate || 0)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   per hour
@@ -362,7 +362,7 @@ const TurfDetailPage: React.FC = () => {
                       </ListItemIcon>
                       <ListItemText
                         primary="Rating"
-                        secondary={`${turf.rating.average}/5 (${turf.rating.count} reviews)`}
+                        secondary={`${turf.rating?.average || 0}/5 (${turf.rating?.count || 0} reviews)`}
                       />
                     </ListItem>
                     <ListItem>
