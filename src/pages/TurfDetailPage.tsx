@@ -152,7 +152,7 @@ const TurfDetailPage: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <LocationOn sx={{ color: 'text.secondary', mr: 1 }} />
             <Typography variant="body1" color="text.secondary">
-                                  {turf.location?.address || 'Address'}, {turf.location?.city || 'City'}, {turf.location?.state || 'State'} - {turf.location?.zipCode || 'ZIP'}
+                                    {turf.location?.address || 'Address'}, {turf.location?.city || 'City'}, {turf.location?.state || 'State'} - {turf.location?.zipCode || 'ZIP'}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

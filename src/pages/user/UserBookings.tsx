@@ -257,7 +257,7 @@ const UserBookings: React.FC = () => {
                         {booking.turf.name}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {booking.turf.location_city}
+                        {booking.turf.location_city || 'City not available'}
                       </Typography>
                     </Box>
                   </TableCell>
@@ -349,7 +349,7 @@ const UserBookings: React.FC = () => {
                   {selectedBooking.turf.name}
                 </Typography>
                 <Typography color="text.secondary" gutterBottom>
-                  {selectedBooking.turf.location_address}, {selectedBooking.turf.location_city}
+                  {selectedBooking.turf.location_address || 'Address not available'}, {selectedBooking.turf.location_city || 'City not available'}
                 </Typography>
               </Grid>
               
