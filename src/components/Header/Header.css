@@ -1,0 +1,18 @@
+.link {
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.875rem;
+    line-height: 1.75;
+    min-width: 64px;
+    padding: 6px 8px;
+    color: inherit;
+
+    &:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
+        box-shadow: rgba(0, 0, 0, 0.15) 0px 4px 12px;
+        text-align: center;
+        border-radius: 5px;
+        padding: 7px;
+    }
+}

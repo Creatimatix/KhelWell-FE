@@ -1,11 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Toaster } from 'react-hot-toast';
 import App from './App';
+import { AuthProvider } from './context/AuthContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,8 +69,9 @@ root.render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <BrowserRouter>
-          <App />
+          <AuthProvider>
+            <App />
+          </AuthProvider>
           <Toaster
             position="top-right"
             toastOptions={{
@@ -81,7 +82,6 @@ root.render(
               },
             }}
           />
-        </BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>
   </React.StrictMode>

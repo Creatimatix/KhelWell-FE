@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -20,16 +20,11 @@ import {
   Alert,
   InputAdornment,
 } from '@mui/material';
-import {
-  Search,
-  LocationOn,
-  SportsSoccer,
-  FilterList,
-} from '@mui/icons-material';
+import { Search, LocationOn, SportsSoccer } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import { turfService } from '../services/turfService';
-import { Turf, SearchFilters } from '../types';
+import { SearchFilters } from '../types';
 
 const sportTypes = [
   'football',
@@ -49,18 +44,43 @@ const TurfListPage: React.FC = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
 
-  const {
-    data: turfsData,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery(
+  const { data: turfsResponse, isLoading, error } = useQuery(
     ['turfs', filters],
     () => turfService.getTurfs(filters),
-    {
-      keepPreviousData: true,
-    }
+    { keepPreviousData: true }
   );
+
+  // Normalize backend response to expected shape used in UI
+  const turfsData = React.useMemo(() => {
+    if (!turfsResponse) return null;
+    
+    try {
+      const raw = (turfsResponse as any).data || turfsResponse;
+
+      // If raw has turfs and pagination style
+      if (raw && raw.turfs) {
+        const pagination = {
+          currentPage: raw.turfs.current_page || 1,
+          totalPages: raw.turfs.last_page || 1,
+          totalItems: raw.turfs.total || (raw.turfs.data ? raw.turfs.data.length : 0),
+          itemsPerPage: raw.turfs.per_page || (raw.turfs.data ? raw.turfs.data.length : 0),
+        };
+        return { data: raw.turfs.data || [], pagination };
+      }
+
+      // If response follows ApiResponse<T> with data and pagination
+      if ((turfsResponse as any).data && (turfsResponse as any).data.length !== undefined) {
+        const pagination = (turfsResponse as any).pagination || null;
+        return { data: (turfsResponse as any).data, pagination };
+      }
+
+      // Fallback: return as-is if it's already matching
+      return turfsResponse;
+    } catch (e) {
+      console.error('Error normalizing turfs response:', e);
+      return null;
+    }
+  }, [turfsResponse]);
 
   const handleSearch = () => {
     setFilters(prev => ({
@@ -111,13 +131,10 @@ const TurfListPage: React.FC = () => {
   if (error) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Alert severity="error">
-          Failed to load turfs. Please try again later.
-        </Alert>
+        <Alert severity="error">Failed to load turfs. Please try again later.</Alert>
       </Container>
     );
   }
-
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {/* Header */}
@@ -187,11 +204,11 @@ const TurfListPage: React.FC = () => {
       )}
 
       {/* Turfs Grid */}
-      {turfsData && (
+  {turfsData && turfsData.data && (
         <>
           <Grid container spacing={3}>
-            {turfsData.data.map((turf) => (
-              <Grid item xs={12} sm={6} md={4} key={turf._id}>
+            {turfsData.data.map((turf: any) => (
+              <Grid item xs={12} sm={6} md={4} key={turf.id}>
                 <Card
                   sx={{
                     height: '100%',
@@ -204,21 +221,33 @@ const TurfListPage: React.FC = () => {
                       boxShadow: '0 8px 25px rgba(0,0,0,0.15)',
                     },
                   }}
-                  onClick={() => navigate(`/turfs/${turf._id}`)}
+                  onClick={() => navigate(`/turf/${turf.slug}`)}
                 >
-                  <CardMedia
-                    component="img"
-                    height="200"
-                    image={turf.images[0] || 'https://via.placeholder.com/400x200?text=Turf+Image'}
-                    alt={turf.name}
-                  />
+
+                 {
+                   (() => {
+                     const defaultImage =
+                       turf.images &&
+                       turf.images.find((img: any) => img.is_default) ||
+                       (turf.images && turf.images[0]);
+                     return (
+                       <CardMedia
+                         component="img"
+                         height="200"
+                         image={defaultImage?.image_url || 'https://turftown.in/_next/image?url=https%3A%2F%2Fturftown.s3.ap-south-1.amazonaws.com%2Fsuper_admin%2Ftt-1726811620216.webp&w=828&q=75'}
+                         alt={turf.name}
+                       />
+                     );
+                   })()
+                 }
+                 
                   <CardContent sx={{ flexGrow: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                       <Typography variant="h6" component="h3" sx={{ flexGrow: 1 }}>
-                        {turf.name}
+                        {turf.name || turf.title || turf.turf_name}
                       </Typography>
                       <Chip
-                        label={turf.sportType}
+                        label={turf.sportType || turf.sport_type || 'multi-sport'}
                         size="small"
                         icon={<SportsSoccer />}
                         color="primary"
@@ -228,12 +257,14 @@ const TurfListPage: React.FC = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                       <LocationOn sx={{ fontSize: 16, color: 'text.secondary', mr: 0.5 }} />
                       <Typography variant="body2" color="text.secondary">
-                        {turf.location?.city || 'City'}, {turf.location?.state || 'State'}
+                        {turf?.address} 
+                        {turf?.city ? ', '+turf.city : ''}
+                        {turf?.state ? ', '+turf.state : ''}
                       </Typography>
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Rating value={turf.rating?.average || 0} precision={0.5} readOnly size="small" />
+                      <Rating value={turf.rating?.average || turf.rating || 0} precision={0.5} readOnly size="small" />
                       <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
                         ({turf.rating?.count || 0} reviews)
                       </Typography>
@@ -241,14 +272,14 @@ const TurfListPage: React.FC = () => {
 
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Typography variant="h6" color="primary">
-                        {formatPrice(turf.pricing?.hourlyRate || 0)}
+                        {formatPrice(turf.pricing?.hourlyRate || turf.price || 0)}
                       </Typography>
                       <Button
                         variant="contained"
                         size="small"
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/turfs/${turf._id}`);
+                          navigate(`/turf/${turf.slug || turf.slug || turf.slug}`);
                         }}
                       >
                         View Details

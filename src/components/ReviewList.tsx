@@ -247,7 +247,7 @@ const ReviewList: React.FC<ReviewListProps> = ({ turfId, onReviewUpdate }) => {
                       />
                     )}
                     
-                    {(user?.id || user?._id) === review.user.id && (
+                    {(user?.id || user?.id) === review.user.id && (
                       <IconButton
                         size="small"
                         onClick={(e) => handleMenuOpen(e, review)}

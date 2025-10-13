@@ -1,15 +1,17 @@
 import axios from 'axios';
 import { LoginData, RegisterData, User } from '../types';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+import { BACKEND_API_URL } from '../utils/constant';
+const API_URL = BACKEND_API_URL;
 
 // Create axios instance
 const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
+  xsrfCookieName: "XSRF-TOKEN",
+  xsrfHeaderName: "X-XSRF-TOKEN",
   headers: {
     'Content-Type': 'application/json',
-  },
-  withCredentials: true,
+  }
 });
 
 // Add token to requests if available
@@ -39,22 +41,41 @@ export interface AuthResponse {
   token: string;
 }
 
+export interface BackendResponse<T> {
+  status: string;
+  message: string;
+  data: T;
+  statusCode: number;
+}
+
 export const authService = {
   async login(email: string, password: string): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/login', {
+    const response = await api.post<BackendResponse<AuthResponse>>('/login', {
       email,
-      password,
+      password, 
     });
-    return response.data;
+    // return response.data;
+
+    const inner = response?.data?.data;
+
+    // Ensure shape matches your AuthResponse interface
+    const result: AuthResponse = {
+      user: inner?.user,
+      token: inner?.token,
+    };
+
+    return result;
   },
 
   async register(userData: RegisterData): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/register', userData);
+    // await api.get("http://localhost/creatimatix/inhouse/creatimatixApp/backend/sanctum/csrf-cookie");
+    console.log('Registering user with data:', userData);
+    const response = await api.post<AuthResponse>('/register', userData);
     return response.data;
   },
 
   async getProfile(): Promise<User> {
-    const response = await api.get<User>('/auth/profile');
+    const response = await api.get<User>('/profile');
     return response.data;
   },
 

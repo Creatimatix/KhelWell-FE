@@ -1,16 +1,15 @@
 export interface User {
-  _id: string;
   id?: number; // For backend compatibility
   name: string;
   email: string;
   phone: string;
   role: 'user' | 'owner' | 'admin';
-  address?: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-  };
+  preference: string;
+  gender: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
   profileImage?: string;
   isVerified: boolean;
   isActive: boolean;
@@ -19,8 +18,9 @@ export interface User {
 }
 
 export interface Turf {
-  _id: string;
+  id: string;
   name: string;
+  slug: string;
   owner: User;
   description: string;
   sportType: 'football' | 'cricket' | 'tennis' | 'basketball' | 'badminton' | 'volleyball' | 'multi-sport';
@@ -143,13 +143,13 @@ export interface RegisterData {
   email: string;
   password: string;
   phone: string;
+  gender: string;
+  preference: string;
   role?: 'user' | 'owner';
-  address?: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-  };
+  street?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
 }
 
 export interface LoginData {

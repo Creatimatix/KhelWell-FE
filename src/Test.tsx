@@ -1,12 +1,16 @@
 import React from "react";
 import {
+  AppBar,
+  Toolbar,
   Typography,
   Container,
   Grid,
   Box,
   Button,
   Card,
+  CardContent,
   Paper,
+  Avatar,
 } from "@mui/material";
 import {
   SportsSoccer,
@@ -17,8 +21,14 @@ import {
   SportsVolleyball,
   SportsMartialArts,
   CheckCircle,
+  People,
+  Event,
+  LocationOn,
+  Star,
+  TrendingUp,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
+import Header from "./components/Header/Header";
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -107,7 +117,10 @@ const HomePage: React.FC = () => {
   ];
 
   return (
-    <>
+    <Box>
+      {/* Header */}
+      <Header />
+  
       {/* Hero */}
       <Box
         sx={{
@@ -354,7 +367,13 @@ const HomePage: React.FC = () => {
           Login
         </Button>
       </Box>
-    </>
+
+      {/* Footer */}
+      <Box sx={{ bgcolor: "#111", color: "white", py: 3, textAlign: "center" }}>
+        © {new Date().getFullYear()} KhelWell. Your Game. Your Journey. All in
+        One Place.
+      </Box>
+    </Box>
   );
 };
 

@@ -40,8 +40,34 @@ const LoginPage: React.FC = () => {
   const onSubmit = async (data: LoginFormData) => {
     try {
       setError('');
-      await login(data.email, data.password);
-      navigate('/');
+      const response = await login(data.email, data.password);
+
+
+      // After successful login, redirect to role-specific dashboard if available
+      const storedUser = localStorage.getItem('auth_user');
+      
+  
+      if (storedUser) {
+
+        try {
+          const parsed = JSON.parse(storedUser as string);
+          switch (parsed.role) {
+            case 'owner':
+              navigate('/owner/dashboard');
+              return;
+            case 'admin':
+              navigate('/admin/dashboard');
+              return;
+            default:
+              navigate('/user/dashboard');
+              return;
+          }
+        } catch {
+          navigate('/');
+        }
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');
     }

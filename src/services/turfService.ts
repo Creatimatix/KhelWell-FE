@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { Turf, SearchFilters, ApiResponse } from '../types';
+import { BACKEND_API_URL } from '../utils/constant';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+const API_URL = BACKEND_API_URL;
 
 // Create axios instance
 const api = axios.create({
@@ -27,8 +28,8 @@ export const turfService = {
     return response.data;
   },
 
-  async getTurfById(id: string): Promise<Turf> {
-    const response = await api.get<Turf>(`/turfs/${id}`);
+  async getTurfBySlug(slug: string): Promise<Turf> {
+    const response = await api.get<Turf>(`/turf/${slug}`);
     return response.data;
   },
 

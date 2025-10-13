@@ -23,9 +23,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored token on app load
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    // Check for stored token on app load (standardized keys)
+    const storedToken = localStorage.getItem('auth_token');
+    const storedUser = localStorage.getItem('auth_user');
 
     if (storedToken && storedUser) {
       try {
@@ -34,8 +34,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(parsedUser);
       } catch (error) {
         console.error('Error parsing stored user data:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
       }
     }
     setLoading(false);
@@ -46,17 +46,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(true);
       const response = await authService.login(email, password);
       
+
       setUser(response.user);
       setToken(response.token);
-      
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      
+
+      localStorage.setItem('auth_token', response.token);
+      localStorage.setItem('auth_user', JSON.stringify(response.user));
+      localStorage.setItem('new_user', 'no');
       // Login successful - no toast notification
     } catch (error: any) {
       // Login failed - no toast notification, just throw error
-      throw error;
+      // throw error;
+       console.log('error:', error);
     } finally {
+      console.log('Final loading state:', loading);
       setLoading(false);
     }
   };
@@ -65,13 +68,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       const response = await authService.register(userData);
-      
+      console.log("Register Response:",response)
       setUser(response.user);
       setToken(response.token);
-      
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      
+
+      // Use standardized keys for storage
+      localStorage.setItem('auth_token', response.token);
+      localStorage.setItem('auth_user', JSON.stringify(response.user));
+      localStorage.setItem('new_user', 'yes');
+          
       // Registration successful - no toast notification
     } catch (error: any) {
       // Registration failed - no toast notification, just throw error
@@ -82,10 +87,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  setUser(null);
+  setToken(null);
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('auth_user');
     // Logout successful - no toast notification
   };
 

@@ -41,7 +41,6 @@ import toast from 'react-hot-toast';
 import SlotBooking from '../components/SlotBooking';
 import ReviewList from '../components/ReviewList';
 import ReviewForm from '../components/ReviewForm';
-import ImageGallery from '../components/ImageSlider/ImageGallery';
 
 const TurfDetailPage: React.FC = () => {
   const param = useParams();
@@ -157,51 +156,9 @@ const TurfDetailPage: React.FC = () => {
   }
 
 
-  
-  const turfImages = [
-        "https://images.unsplash.com/photo-1499696010180-025ef6e1a8f9?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1470&q=80",
-        "https://images.unsplash.com/photo-1432462770865-65b70566d673?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80",
-        "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2940&q=80",
-        "https://images.unsplash.com/photo-1518623489648-a173ef7824f3?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2762&q=80",
-        "https://images.unsplash.com/photo-1682407186023-12c70a4a35e0?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2832&q=80",
-  ];
+  console.log('Turf Slug:', slug);
+  console.log('Turf data:', turf);
 
-  interface CustomTabPanelProps {
-    children?: React.ReactNode;
-    value: number;
-    index: number;
-    [key: string]: any;
-  }
-
-  function CustomTabPanel(props: CustomTabPanelProps) {
-    const { children, value, index, ...other } = props;
-
-    return (
-      <div
-        role="tabpanel"
-        hidden={value !== index}
-        id={`simple-tabpanel-${index}`}
-        aria-labelledby={`simple-tab-${index}`}
-        {...other}
-      >
-        {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-      </div>
-    );
-  }
-
-  function a11yProps(index: number) {
-    return {
-      id: `simple-tab-${index}`,
-      'aria-controls': `simple-tabpanel-${index}`,
-    };
-  }
-
-
-const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
-  };
-
-  
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         {/* Header */}
@@ -212,10 +169,7 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <LocationOn sx={{ color: 'text.secondary', mr: 1 }} />
             <Typography variant="body1" color="text.secondary">
-                  {turf?.address || 'Address'}
-                  {/* {turf.location?.city || 'City'}, 
-                  {turf.location?.state || 'State'} - 
-                  {turf.location?.zipCode || 'ZIP'} */}
+                                    {turf.location?.address || 'Address'}, {turf.location?.city || 'City'}, {turf.location?.state || 'State'} - {turf.location?.zipCode || 'ZIP'}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -234,73 +188,22 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
 
         <Grid container spacing={4}>
           {/* Main Content */}
-          <Grid item xs={12} md={7}>
-            <ImageGallery images={ turf?.images } />
+          <Grid item xs={12} md={8}>
+            {/* Images */}
+            {/* <Card sx={{ mb: 3 }}>
+              <CardMedia
+                component="img"
+                height="400"
+                image={turf.images[0] || 'https://via.placeholder.com/800x400?text=Turf+Image'}
+                alt={turf.name}
+              />
+            </Card> */}
 
-            {/* Show if multiple sports available */}
-            {
-              turf?.sports && 
-               <Card sx={{ mb: 3}}>
-                <CardContent>
-                  <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                    <Tabs
-                      value={activeTab}
-                      onChange={handleTabChange}
-                      aria-label="sports tabs"
-                      variant="scrollable"
-                      scrollButtons="auto"
-                    >
-                      {turf?.sports?.map(
-                        (
-                          sport: { id: number; name: string; sport_type?: { name?: string } },
-                          idx: number
-                        ) => (
-                          <Tab
-                            key={sport.id}
-                            label={sport.sport_type?.name || sport.name}
-                            {...a11yProps(idx)}
-                          />
-                        )
-                      )}
-                    </Tabs>
-                  </Box>
-                  {turf?.sports?.map(
-                    (
-                      sport: { 
-                        id: number; 
-                        name: string; 
-                        rate_per_hour: string,
-                        dimensions?:string, 
-                        capacity?: string,
-                        rules?: string 
-                        sport_type?: {
-                           name?: string,
-                        }
-                      },
-                      idx: number
-                    ) => (
-                      <CustomTabPanel value={activeTab} index={idx} key={sport.id}>
-                        {/* Add more sport details here if available */}
-                        <Typography variant="body2" color="text.secondary">
-                           <h3 className="text-lg font-semibold py-2">{sport?.sport_type?.name} Details</h3>
-                              <p><strong>Rate Per Hour:</strong> ${sport?.rate_per_hour}</p>
-                              <p><strong>Dimensions:</strong> {sport?.dimensions}</p>
-                              <p><strong>Capacity:</strong> {sport?.capacity} people</p>
-                              <p><strong>Rules:</strong></p>
-                              <p>{sport?.rules}</p>
-                        </Typography>
-                      </CustomTabPanel>
-                    )
-                  )}
-                </CardContent>
-              </Card>    
-            }          
-               
             {/* Description */}
             <Card sx={{ mb: 3 }}>
               <CardContent>
                 <Typography variant="h5" gutterBottom>
-                  About { turf?.name }
+                  About this turf
                 </Typography>
                 <Typography variant="body1" paragraph>
                   {turf.description}
@@ -363,52 +266,40 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
             </Card>
 
             {/* Amenities */}
-            {turf?.sports?.length > 0 && (
+            {/* {turf?.amenities?.length > 0 && (
               <Card sx={{ mb: 3 }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
                     Amenities
                   </Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {turf.sports.map((
-                      sport: { 
-                        id: number; 
-                        name: string; 
-                        rate_per_hour: string,
-                        dimensions?:string, 
-                        capacity?: string,
-                        rules?: string 
-                        sport_type?: {
-                           name?: string,
-                        }
-                      },
-                      idx: number) => (
-                      <Chip key={idx} label={sport?.name} variant="outlined" />
+                    {turf.amenities.map((amenity, index) => (
+                      <Chip key={index} label={amenity} variant="outlined" />
                     ))}
                   </Box>
                 </CardContent>
               </Card>
-            )}
+            )} */}
 
             {/* Operating Hours */}
-            {turf.timing && (
+            {/* {turf.operatingHours && (
               <Card sx={{ mb: 3 }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
                     Operating Hours
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {turf.timing}
+                    {turf.operatingHours.openTime} - {turf.operatingHours.closeTime}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Open on: {turf.timing}
+                    Open on: {turf.operatingHours.daysOpen.join(', ')}
                   </Typography>
                 </CardContent>
               </Card>
-            )}
+            )} */}
 
             {/* Reviews Section */}
-            <Card>
+            {/* <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Typography variant="h6" gutterBottom>
@@ -441,11 +332,11 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
                   }}
                 />
               </CardContent>
-            </Card>
+            </Card> */}
           </Grid>
 
           {/* Sidebar */}
-          <Grid item xs={12} md={5}>
+          {/* <Grid item xs={12} md={4}>
             <Card sx={{ position: 'sticky', top: 20 }}>
               <CardContent>
                 <Typography variant="h4" color="primary" gutterBottom>
@@ -504,7 +395,7 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
                 </Box>
               </CardContent>
             </Card>
-          </Grid>
+          </Grid> */}
         </Grid>
 
         {/* Slot Booking Component */}

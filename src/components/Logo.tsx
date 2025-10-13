@@ -84,7 +84,7 @@ const Logo: React.FC<LogoProps> = ({
             component="div"
             sx={{ 
               fontWeight: 'bold',
-              color: logoColor,
+              color: 'white',
               fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
               letterSpacing: '0.5px',
               textShadow: '0 2px 4px rgba(0,0,0,0.1)',

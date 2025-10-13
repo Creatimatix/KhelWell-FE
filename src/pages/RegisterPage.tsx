@@ -10,12 +10,14 @@ import {
   Alert,
   CircularProgress,
   Grid,
+  Autocomplete,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  FormHelperText,
   FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
 } from '@mui/material';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
@@ -31,13 +33,12 @@ const schema = yup.object({
     .oneOf([yup.ref('password')], 'Passwords must match')
     .required('Confirm password is required'),
   phone: yup.string().required('Phone number is required').matches(/^[0-9]{10}$/, 'Phone number must be 10 digits'),
-  role: yup.string().oneOf(['user', 'owner'], 'Please select a valid role').required('Role is required'),
-  address: yup.object({
-    street: yup.string().required('Street address is required'),
-    city: yup.string().required('City is required'),
-    state: yup.string().required('State is required'),
-    zipCode: yup.string().required('ZIP code is required').matches(/^[0-9]{6}$/, 'ZIP code must be 6 digits'),
-  }).required(),
+  address: yup.string().required('Street address is required'),
+  city: yup.string().required('City is required'),
+  state: yup.string().required('State is required'),
+  zipCode: yup.string().required('ZIP code is required').matches(/^[0-9]{6}$/, 'ZIP code must be 6 digits'),
+  preference: yup.string().required('Sport preference is required'),
+  gender: yup.string().required('Gender is required')
 }).required();
 
 type RegisterFormData = yup.InferType<typeof schema>;
@@ -53,10 +54,7 @@ const RegisterPage: React.FC = () => {
     formState: { errors, isSubmitting },
     watch,
   } = useForm<RegisterFormData>({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      role: 'user',
-    },
+    resolver: yupResolver(schema)
   });
 
   const onSubmit = async (data: RegisterFormData) => {
@@ -64,11 +62,50 @@ const RegisterPage: React.FC = () => {
       setError('');
       const { confirmPassword, ...registerData } = data;
       await registerUser(registerData as RegisterData);
-      navigate('/');
+      // After successful registration, redirect based on role
+      const storedUser = localStorage.getItem('auth_user');
+      const newUser = localStorage.getItem('new_user');
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          if(newUser === 'yes'){
+              navigate('/user/profile')
+              return;
+          }
+          switch (parsed.role) {
+            case 'owner':
+              navigate('/owner/dashboard');
+              return;
+            case 'admin':
+              navigate('/admin/dashboard');
+              return;
+            default:
+              navigate('/user/dashboard');
+              return;
+          }
+        } catch {
+          navigate('/');
+        }
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
     }
   };
+
+  type Option = { label: string; value: string; id: number };
+
+  const options: Option[] = [
+    { label: 'Football', value: 'football', id: 1 },
+    { label: 'Cricket', value: 'cricket', id: 2 },
+    { label: 'Tennis', value: 'tennis', id: 3 },
+    { label: 'Basketball', value: 'basketball', id: 4 },
+    { label: 'Badminton', value: 'badminton', id: 5 },
+    { label: 'Volleyball', value: 'volleyball', id: 6 },
+    { label: 'Karate', value: 'karate', id: 7 },
+    { label: 'Multi-sport', value: 'multi-sport', id: 8 }
+  ];
 
   return (
     <Container maxWidth="md" sx={{ mt: 8, mb: 4 }}>
@@ -97,7 +134,6 @@ const RegisterPage: React.FC = () => {
               <TextField
                 {...register('name')}
                 margin="normal"
-                required
                 fullWidth
                 id="name"
                 label="Full Name"
@@ -111,7 +147,6 @@ const RegisterPage: React.FC = () => {
               <TextField
                 {...register('phone')}
                 margin="normal"
-                required
                 fullWidth
                 id="phone"
                 label="Phone Number"
@@ -120,11 +155,10 @@ const RegisterPage: React.FC = () => {
                 helperText={errors.phone?.message}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 {...register('email')}
                 margin="normal"
-                required
                 fullWidth
                 id="email"
                 label="Email Address"
@@ -137,7 +171,6 @@ const RegisterPage: React.FC = () => {
               <TextField
                 {...register('password')}
                 margin="normal"
-                required
                 fullWidth
                 label="Password"
                 type="password"
@@ -151,7 +184,6 @@ const RegisterPage: React.FC = () => {
               <TextField
                 {...register('confirmPassword')}
                 margin="normal"
-                required
                 fullWidth
                 label="Confirm Password"
                 type="password"
@@ -161,19 +193,68 @@ const RegisterPage: React.FC = () => {
                 helperText={errors.confirmPassword?.message}
               />
             </Grid>
-            <Grid item xs={12}>
-              <FormControl fullWidth margin="normal" error={!!errors.role}>
-                <InputLabel id="role-label">Account Type</InputLabel>
-                <Select
-                  {...register('role')}
-                  labelId="role-label"
-                  id="role"
-                  label="Account Type"
-                >
-                  <MenuItem value="user">Sports Enthusiast</MenuItem>
-                  <MenuItem value="owner">Turf Owner</MenuItem>
-                </Select>
+
+            <Grid item xs={12} sm={6}>
+               <FormControl component="fieldset" error={!!errors.gender} sx={{ width: '100%' }}>
+                  <RadioGroup row aria-label="gender" name="gender" sx={{ gap: 2,textAlign: 'left',display: 'flex',alignItems: "center" }}>
+                    <FormControlLabel
+                      value="female"
+                      control={<Radio {...register('gender', { required: 'Gender is required' })} />}
+                      label="Female"
+                    />
+                    <FormControlLabel
+                      value="male"
+                      control={<Radio {...register('gender', { required: 'Gender is required' })} />}
+                      label="Male"
+                    />
+                    <FormControlLabel
+                      value="other"
+                      control={<Radio {...register('gender', { required: 'Gender is required' })} />}
+                      label="Other"
+                    />
+                  </RadioGroup>
               </FormControl>
+              <FormHelperText style={{color:"#d32f2f",fontSize: '0.75rem', fontWeight: '400'}}>{errors.gender?.message}</FormHelperText>
+            </Grid>
+
+            {/* Sport Preferences */}
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+                Sport Preference
+              </Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <Autocomplete
+                disablePortal
+                options={options}
+                sx={{ width: 300 }}
+                isOptionEqualToValue={(option, value) => option.value === value.value}
+                getOptionLabel={(option) => option.label}
+                value={options.find(o => o.value === watch('preference')) ?? null}
+                onChange={
+                  (_, value) => { 
+                    const event = { 
+                      target: { 
+                        name: 'preference', value: value?.value || '', 
+                      } 
+                    }; 
+                    register('preference').onChange(event); 
+                    if (!errors.preference) { 
+                      document.activeElement instanceof HTMLElement && document.activeElement.blur(); 
+                    } 
+                  }
+                }
+                id='preference'
+                renderInput={(params) => (
+                  <TextField
+                  {...params}
+                  label="Prefer Sport"
+                  id="preference"
+                  error={!!errors.preference}
+                  helperText={errors.preference?.message}
+                />
+                )}
+              />
             </Grid>
             
             {/* Address Fields */}
@@ -184,50 +265,47 @@ const RegisterPage: React.FC = () => {
             </Grid>
             <Grid item xs={12}>
               <TextField
-                {...register('address.street')}
+                {...register('address')}
                 margin="normal"
-                required
                 fullWidth
-                id="street"
+                id="address"
+                name="address"
                 label="Street Address"
-                error={!!errors.address?.street}
-                helperText={errors.address?.street?.message}
+                error={!!errors.address}
+                helperText={errors.address?.message}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField
-                {...register('address.city')}
+                {...register('city')}
                 margin="normal"
-                required
                 fullWidth
                 id="city"
                 label="City"
-                error={!!errors.address?.city}
-                helperText={errors.address?.city?.message}
+                error={!!errors?.city}
+                helperText={errors?.city?.message}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField
-                {...register('address.state')}
+                {...register('state')}
                 margin="normal"
-                required
                 fullWidth
                 id="state"
                 label="State"
-                error={!!errors.address?.state}
-                helperText={errors.address?.state?.message}
+                error={!!errors?.state}
+                helperText={errors?.state?.message}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField
-                {...register('address.zipCode')}
+                {...register('zipCode')}
                 margin="normal"
-                required
                 fullWidth
                 id="zipCode"
                 label="ZIP Code"
-                error={!!errors.address?.zipCode}
-                helperText={errors.address?.zipCode?.message}
+                error={!!errors?.zipCode}
+                helperText={errors?.zipCode?.message}
               />
             </Grid>
           </Grid>

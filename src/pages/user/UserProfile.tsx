@@ -19,7 +19,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Chip
+  Chip,
+  Autocomplete
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -34,6 +35,7 @@ import {
   Wc as GenderIcon,
   PhotoCamera as CameraIcon
 } from '@mui/icons-material';
+import { BACKEND_API_URL } from '../../utils/constant';
 
 interface User {
   id: number;
@@ -41,13 +43,13 @@ interface User {
   email: string;
   phone: string;
   role: string;
-  address_street?: string;
-  address_city?: string;
-  address_state?: string;
-  address_zip_code?: string;
-  profile_image?: string;
-  interested_sports?: string[];
-  bio?: string;
+  short_desc?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipcode?: string;
+  profile?: string;
+  primary_sport_preference?: string;
   date_of_birth?: string;
   gender?: string;
   is_verified: boolean;
@@ -65,29 +67,41 @@ const UserProfile: React.FC = () => {
   const [saveLoading, setSaveLoading] = useState(false);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
+  type Option = { label: string; value: string; id: number };
 
-  // Available sports options
-  const sportsOptions = [
-    'Cricket', 'Football', 'Tennis', 'Basketball', 'Badminton', 
-    'Hockey', 'Volleyball', 'Table Tennis', 'Squash', 'Rugby',
-    'Baseball', 'Golf', 'Swimming', 'Athletics', 'Boxing'
+  const options: Option[] = [
+    { label: 'Football', value: 'football', id: 1 },
+    { label: 'Cricket', value: 'cricket', id: 2 },
+    { label: 'Tennis', value: 'tennis', id: 3 },
+    { label: 'Basketball', value: 'basketball', id: 4 },
+    { label: 'Badminton', value: 'badminton', id: 5 },
+    { label: 'Volleyball', value: 'volleyball', id: 6 },
+    { label: 'Karate', value: 'karate', id: 7 },
+    { label: 'Multi-sport', value: 'multi-sport', id: 8 }
   ];
 
-  const genderOptions = ['Male', 'Female', 'Other', 'Prefer not to say'];
+  const genderOptions = [
+    { key: 'male', label: 'Male' },
+    { key: 'female', label: 'Female' },
+    { key: 'other', label: 'Other' },
+    { key: 'prefer_not_to_say', label: 'Prefer not to say' }
+  ];
 
   useEffect(() => {
     fetchUserProfile();
   }, []);
 
   const fetchUserProfile = async () => {
+
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       if (!token) {
         setError('No authentication token found');
         return;
       }
 
-      const response = await fetch('http://localhost:5001/api/users/profile', {
+      const response = await fetch(BACKEND_API_URL+'user', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -98,17 +112,21 @@ const UserProfile: React.FC = () => {
         throw new Error(errorData.message || 'Failed to fetch user profile');
       }
 
-      const data = await response.json();
+      let data = await response.json();
       
+      data = data?.data;
+      console.log('User profile data:', data);
       // Validate and clean the user data
       const validatedUser = {
         ...data.user,
-        address_street: data.user.address_street || '',
-        address_city: data.user.address_city || '',
-        address_state: data.user.address_state || '',
-        address_zip_code: data.user.address_zip_code || '',
-        profile_image: data.user.profile_image || '',
+        short_desc: data.user.short_desc || '',
+        address: data.user.address || '',
+        city: data.user.city || '',
+        state: data.user.state || '',
+        zipcode: data.user.zipcode || '',
+        profile: data.user.profile || '',
         phone: data.user.phone || '',
+        date_of_birth: data.user.dob || '',
         is_verified: data.user.is_verified || false,
         is_active: data.user.is_active || true
       };
@@ -141,14 +159,44 @@ const UserProfile: React.FC = () => {
     setSuccess(null);
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/users/profile', {
-        method: 'PUT',
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setError('No authentication token found');
+        setSaveLoading(false);
+        return;
+      }
+
+      // Use FormData for file upload
+      const formData = new FormData();
+      formData.append('id', String(user.id));
+      formData.append('name', editForm.name ?? user.name);
+      formData.append('email', editForm.email ?? user.email);
+      formData.append('phone', editForm.phone ?? user.phone);
+      formData.append('role', editForm.role ?? user.role);
+      formData.append('short_desc', editForm.short_desc ?? user.short_desc ?? '');
+      formData.append('address', editForm.address ?? user.address ?? '');
+      formData.append('city', editForm.city ?? user.city ?? '');
+      formData.append('state', editForm.state ?? user.state ?? '');
+      formData.append('zipcode', editForm.zipcode ?? user.zipcode ?? '');
+      formData.append(
+        'primary_sport_preference',
+        editForm.primary_sport_preference ?? user.primary_sport_preference ?? ''
+      );
+      formData.append('date_of_birth', editForm.date_of_birth ?? user.date_of_birth ?? '');
+      formData.append('gender', editForm.gender ?? user.gender ?? '');
+
+      // Only append file if selected
+      if (profileImageFile) {
+        formData.append('profile', profileImageFile);
+      }
+
+      const response = await fetch(BACKEND_API_URL+'user-update', {
+        method: 'POST',
+        credentials: 'include',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(editForm)
+        body: formData
       });
 
       if (!response.ok) {
@@ -157,20 +205,21 @@ const UserProfile: React.FC = () => {
       }
 
       const data = await response.json();
-      
-      // Validate and clean the updated user data
+      const userData = data?.data || '';
       const validatedUser = {
-        ...data.user,
-        address_street: data.user.address_street || '',
-        address_city: data.user.address_city || '',
-        address_state: data.user.address_state || '',
-        address_zip_code: data.user.address_zip_code || '',
-        profile_image: data.user.profile_image || '',
-        phone: data.user.phone || '',
-        is_verified: data.user.is_verified || false,
-        is_active: data.user.is_active || true
+        ...userData,
+        short_desc: userData.short_desc || '',
+        address: userData.address || '',
+        city: userData.city || '',
+        state: userData.state || '',
+        zipcode: userData.zipcode || '',
+        profile: userData.profile || '',
+        phone: userData.phone || '',
+        date_of_birth: userData.dob || '',
+        is_verified: userData.is_verified || false,
+        is_active: userData.is_active ?? true
       };
-      
+
       setUser(validatedUser);
       setEditForm(validatedUser);
       setIsEditing(false);
@@ -223,6 +272,7 @@ const UserProfile: React.FC = () => {
     }));
   };
 
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -234,7 +284,7 @@ const UserProfile: React.FC = () => {
   if (!user) {
     return (
       <Box>
-        <Alert severity="error">Failed to load user profile</Alert>
+        <Alert severity="error">Failed to load user profile sss</Alert>
       </Box>
     );
   }
@@ -262,7 +312,7 @@ const UserProfile: React.FC = () => {
           <Box display="flex" alignItems="center" mb={3}>
             <Box position="relative">
               <Avatar
-                src={imagePreview || user.profile_image}
+                src={imagePreview || user.profile}
                 sx={{ width: 80, height: 80, mr: 2 }}
               >
                 <PersonIcon fontSize="large" />
@@ -385,8 +435,8 @@ const UserProfile: React.FC = () => {
                     <TextField
                       fullWidth
                       label="Street Address"
-                      value={editForm.address_street || ''}
-                      onChange={(e) => handleInputChange('address_street', e.target.value)}
+                      value={editForm.address || ''}
+                      onChange={(e) => handleInputChange('address', e.target.value)}
                       size="small"
                     />
                   </Grid>
@@ -394,8 +444,8 @@ const UserProfile: React.FC = () => {
                     <TextField
                       fullWidth
                       label="City"
-                      value={editForm.address_city || ''}
-                      onChange={(e) => handleInputChange('address_city', e.target.value)}
+                      value={editForm.city || ''}
+                      onChange={(e) => handleInputChange('city', e.target.value)}
                       size="small"
                     />
                   </Grid>
@@ -403,8 +453,8 @@ const UserProfile: React.FC = () => {
                     <TextField
                       fullWidth
                       label="State"
-                      value={editForm.address_state || ''}
-                      onChange={(e) => handleInputChange('address_state', e.target.value)}
+                      value={editForm.state || ''}
+                      onChange={(e) => handleInputChange('state', e.target.value)}
                       size="small"
                     />
                   </Grid>
@@ -412,15 +462,18 @@ const UserProfile: React.FC = () => {
                     <TextField
                       fullWidth
                       label="ZIP Code"
-                      value={editForm.address_zip_code || ''}
-                      onChange={(e) => handleInputChange('address_zip_code', e.target.value)}
+                      value={editForm.zipcode || ''}
+                      onChange={(e) => handleInputChange('zipcode', e.target.value)}
                       size="small"
                     />
                   </Grid>
                 </Grid>
               ) : (
                 <Typography variant="body1">
-                  {user.address_street}, {user.address_city}, {user.address_state} {user.address_zip_code}
+                  {user?.address}
+                  {user?.city ? ', '+user?.city: ''}
+                  {user?.state ? ', '+user?.state: ''}
+                  {user?.zipcode ? ', '+user?.zipcode: ''}
                 </Typography>
               )}
             </Grid>
@@ -434,36 +487,41 @@ const UserProfile: React.FC = () => {
               </Box>
               {isEditing ? (
                 <FormControl fullWidth size="small">
-                  <Select
-                    multiple
-                    value={editForm.interested_sports || []}
-                    onChange={(e) => handleInputChange('interested_sports', e.target.value as string[])}
-                    renderValue={(selected) => (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {selected.map((value) => (
-                          <Chip key={value} label={value} size="small" />
-                        ))}
-                      </Box>
+                  <Autocomplete
+                    disablePortal
+                    options={options}
+                    sx={{ width: 300 }}
+                    isOptionEqualToValue={(option, value) => !!value && option.value === value.value}
+                    getOptionLabel={(option) => option.label}
+                    value={
+                      (() => {
+                        const stored = typeof editForm.primary_sport_preference === 'string'
+                          ? editForm.primary_sport_preference
+                          : Array.isArray(editForm.primary_sport_preference)
+                            ? editForm.primary_sport_preference[0]
+                            : '';
+                        return stored ? (options.find(o => o.value === stored) ?? null) : null;
+                      })()
+                    }
+                    onChange={(_, value) => {
+                      handleInputChange(
+                        'primary_sport_preference',
+                        value ? value.value : ''
+                      );
+                    }}
+                    id="preference"
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Prefer Sport"
+                        id="preference"
+                      />
                     )}
-                  >
-                    {sportsOptions.map((sport) => (
-                      <MenuItem key={sport} value={sport}>
-                        {sport}
-                      </MenuItem>
-                    ))}
-                  </Select>
+                  />
                 </FormControl>
               ) : (
                 <Box display="flex" flexWrap="wrap" gap={1}>
-                  {user.interested_sports && user.interested_sports.length > 0 ? (
-                    user.interested_sports.map((sport) => (
-                      <Chip key={sport} label={sport} size="small" />
-                    ))
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      No sports selected
-                    </Typography>
-                  )}
+                    <Chip label={user.primary_sport_preference} size="small" />
                 </Box>
               )}
             </Grid>
@@ -480,14 +538,14 @@ const UserProfile: React.FC = () => {
                   fullWidth
                   multiline
                   rows={3}
-                  value={editForm.bio || ''}
-                  onChange={(e) => handleInputChange('bio', e.target.value)}
+                  value={editForm.short_desc || ''}
+                  onChange={(e) => handleInputChange('short_desc', e.target.value)}
                   placeholder="Tell us about yourself..."
                   size="small"
                 />
               ) : (
                 <Typography variant="body1">
-                  {user.bio || 'No bio provided'}
+                  {user.short_desc || 'No bio provided'}
                 </Typography>
               )}
             </Grid>
@@ -529,8 +587,12 @@ const UserProfile: React.FC = () => {
                     onChange={(e) => handleInputChange('gender', e.target.value)}
                   >
                     {genderOptions.map((gender) => (
-                      <MenuItem key={gender} value={gender}>
-                        {gender}
+                      <MenuItem
+                        key={gender.key}
+                        value={gender.key}
+                        selected={editForm.gender === gender.key}
+                      >
+                        {gender.label}
                       </MenuItem>
                     ))}
                   </Select>
