@@ -28,6 +28,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import SaveIcon from "@mui/icons-material/Save";
+import { BACKEND_API_URL } from "../../utils/constant";
+import axios from "axios";
 
 type SportRow = {
   id: number;
@@ -64,6 +66,7 @@ export default function TurfWizard() {
   const [address, setAddress] = useState("");
   const [latitude, setLatitude] = useState<string>("");
   const [longitude, setLongitude] = useState<string>("");
+  const [pricing, setPricing] = useState<string>('800');
   const [isActive, setIsActive] = useState(true);
   const [timing, setTiming] = useState("");
 
@@ -97,7 +100,9 @@ export default function TurfWizard() {
     if (activeStep === 0) {
       const e: Record<string, string> = {};
       if (!name.trim()) e.name = "Name is required";
-      if (!slug.trim()) e.slug = "URL slug is required";
+      if (!slug.trim()) e.slug  = "URL slug is required";
+      if (!pricing) e.pricing  = "Pricing is required";
+      if (!address.trim()) e.address  = "Location is required";
       setErrors(e);
       if (Object.keys(e).length) return;
     }
@@ -199,10 +204,12 @@ export default function TurfWizard() {
       slug,
       short_description: shortDesc,
       description,
-      address,
+      location: address || null,
+      address: address || null,
       latitude: latitude || null,
       longitude: longitude || null,
       timing,
+      pricing,
       is_active: isActive,
       images: images.map((i) => ({ url: i.url, alt: i.alt, isDefault: !!i.isDefault, sortOrder: i.sortOrder })),
       sports: sports.map((s) => ({
@@ -217,14 +224,14 @@ export default function TurfWizard() {
     console.log("FINAL PAYLOAD", payload);
 
     // Example: send to API - replace with your axios call
-    // try {
-    //   await api.post('/api/turfs', payload, { withCredentials: true });
-    //   alert('Turf created');
-    // } catch (err) {
-    //   console.error(err);
-    //   alert('Failed to create');
-    // }
-    alert("Payload logged to console (replace with API call).");
+    try {
+      const response = await axios.post(BACKEND_API_URL+'turf/store', payload, { withCredentials: true });
+      console.log('Turf',response);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to create');
+    }
+    // alert("Payload logged to console (replace with API call).");
   }
 
   // ********** Small UI helpers **********
@@ -238,6 +245,21 @@ export default function TurfWizard() {
     "Karate",
     "Multi-sport",
   ];
+
+  const generateSlug = (text: string) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')  // remove invalid chars
+      .replace(/\s+/g, '-')          // replace spaces with -
+      .replace(/-+/g, '-');          // collapse multiple -
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setName(value);
+    setSlug(generateSlug(value)); // auto update slug
+  };
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -262,7 +284,7 @@ export default function TurfWizard() {
                 <TextField
                   label="Name"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={handleNameChange}
                   fullWidth
                   error={!!errors.name}
                   helperText={errors.name}
@@ -273,20 +295,27 @@ export default function TurfWizard() {
                 <TextField
                   label="Turf URL (slug)"
                   value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
+                  onChange={(e) => setSlug(generateSlug(e.target.value))}
                   fullWidth
                   placeholder="e.g., rutherford-and-sons"
                   error={!!errors.slug}
                   helperText={errors.slug}
                 />
-              </Grid>
+              </Grid> 
 
               <Grid item xs={12} md={6}>
                 <TextField label="Timing" value={timing} onChange={(e) => setTiming(e.target.value)} fullWidth />
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <TextField label="Location" value={address} onChange={(e) => setAddress(e.target.value)} fullWidth />
+                <TextField 
+                  label="Location" 
+                  value={address} 
+                  onChange={(e) => setAddress(e.target.value)} 
+                  fullWidth 
+                  error={!!errors.address}
+                  helperText={errors.address}
+                />
               </Grid>
 
               <Grid item xs={12}>
@@ -318,7 +347,16 @@ export default function TurfWizard() {
                 <TextField label="Longitude" value={longitude} onChange={(e) => setLongitude(e.target.value)} fullWidth />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid item xs={6} md={3}>
+                <TextField 
+                  label="Pricing" 
+                  value={pricing} 
+                  onChange={(e) => setPricing(e.target.value)} 
+                  error={!!errors.pricing}
+                  helperText={errors.pricing}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
                 <FormControlLabel
                   control={<Switch checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />}
                   label="Is Available?"

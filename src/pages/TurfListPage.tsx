@@ -25,6 +25,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import { turfService } from '../services/turfService';
 import { SearchFilters } from '../types';
+import { TurfDefaultImg } from '../utils/constant';
 
 const sportTypes = [
   'football',
@@ -204,7 +205,7 @@ const TurfListPage: React.FC = () => {
       )}
 
       {/* Turfs Grid */}
-  {turfsData && turfsData.data && (
+    {turfsData && turfsData.data && (
         <>
           <Grid container spacing={3}>
             {turfsData.data.map((turf: any) => (
@@ -234,7 +235,7 @@ const TurfListPage: React.FC = () => {
                        <CardMedia
                          component="img"
                          height="200"
-                         image={defaultImage?.image_url || 'https://turftown.in/_next/image?url=https%3A%2F%2Fturftown.s3.ap-south-1.amazonaws.com%2Fsuper_admin%2Ftt-1726811620216.webp&w=828&q=75'}
+                         image={defaultImage?.image_url || TurfDefaultImg}
                          alt={turf.name}
                        />
                      );
@@ -272,7 +273,7 @@ const TurfListPage: React.FC = () => {
 
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Typography variant="h6" color="primary">
-                        {formatPrice(turf.pricing?.hourlyRate || turf.price || 0)}
+                        {formatPrice(turf?.min_price || turf?.min_price || 0)}
                       </Typography>
                       <Button
                         variant="contained"

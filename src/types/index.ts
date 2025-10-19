@@ -125,6 +125,7 @@ export interface Event {
   updatedAt: string;
   isOngoing?: boolean;
   isUpcoming?: boolean;
+  event_start_date: string;
 }
 
 export interface AuthContextType {

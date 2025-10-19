@@ -44,26 +44,34 @@ import {
 import { format } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { BACKEND_API_URL } from '../utils/constant';
 
 interface Event {
-  _id: string;
+  id: string;
   title: string;
   description: string;
-  sportType: string;
-  type: string;
-  startDate: string;
-  endDate: string;
+  sports_type: string;
+  event_start_date: string;
+  event_end_date: string;
+  registration_start_date: string;
+  registration_end_date: string;
   startTime: string;
   endTime: string;
   location: string;
-  maxParticipants?: number;
+  address: string;
+  rules: string;
+  team_limit?: number;
   currentParticipants: number;
-  entryFee: number;
-  status: string;
-  image?: string;
+  registration_amount: number;
+  user_name: string;
+  event_type: string;
+  is_active: string;
+  banner?: string;
+  banner_url?: string;
   createdBy: {
     name: string;
     email: string;
+    user_name: string;
   };
 }
 
@@ -87,14 +95,14 @@ const EventsPage: React.FC = () => {
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/events');
+      const response = await fetch(BACKEND_API_URL+"events");
       
       if (!response.ok) {
         throw new Error('Failed to fetch events');
       }
 
       const data = await response.json();
-      setEvents(data.events || []);
+      setEvents(data.events.data || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load events');
     } finally {
@@ -103,6 +111,7 @@ const EventsPage: React.FC = () => {
   };
 
   const getSportIcon = (sport: string) => {
+    console.log("Sport: ", sport.toLowerCase());
     switch (sport.toLowerCase()) {
       case 'football': return <SoccerIcon />;
       case 'cricket': return <CricketIcon />;
@@ -112,14 +121,15 @@ const EventsPage: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'upcoming': return 'primary';
-      case 'ongoing': return 'success';
-      case 'completed': return 'info';
-      case 'cancelled': return 'error';
-      default: return 'default';
-    }
+  const getStatusColor = (is_active: string) => {
+    // switch (is_active) {
+    //   case 'upcoming': return 'primary';
+    //   case 'ongoing': return 'success';
+    //   case 'completed': return 'info';
+    //   case 'cancelled': return 'error';
+    //   default: return 'default';
+    // }
+    return is_active === 'true' ? 'success' : 'error';
   };
 
   const getEventTypeColor = (type: string) => {
@@ -133,22 +143,24 @@ const EventsPage: React.FC = () => {
     }
   };
 
+
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.location.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesSport = sportFilter === 'all' || event.sportType === sportFilter;
-    const matchesStatus = statusFilter === 'all' || event.status === statusFilter;
-    const matchesType = eventTypeFilter === 'all' || event.type === eventTypeFilter;
+    const matchesSport = sportFilter === 'all' || event.sports_type === sportFilter;
+    const matchesStatus = statusFilter === 'all' || event.is_active === statusFilter;
+    const matchesType = eventTypeFilter === 'all' || event.event_type === eventTypeFilter;
 
     return matchesSearch && matchesSport && matchesStatus && matchesType;
   });
 
   const isRegistrationOpen = (event: Event) => {
     const now = new Date();
-    const startDate = new Date(event.startDate);
-    return startDate > now && event.currentParticipants < (event.maxParticipants || 0);
+    const startDate = new Date(event.event_start_date);
+    // return startDate > now;
+    return false;
   };
 
   if (loading) {
@@ -236,7 +248,7 @@ const EventsPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+            {/* <Grid item xs={12} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Status</InputLabel>
                 <Select
@@ -268,7 +280,7 @@ const EventsPage: React.FC = () => {
                   <MenuItem value="training">Training</MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
+            </Grid> */}
             <Grid item xs={12} md={2}>
               <Button
                 fullWidth
@@ -301,7 +313,7 @@ const EventsPage: React.FC = () => {
       ) : (
         <Grid container spacing={3}>
           {filteredEvents.map((event) => (
-            <Grid item xs={12} md={6} lg={4} key={event._id}>
+            <Grid item xs={12} md={6} lg={4} key={event.id}>
               <Card 
                 sx={{ 
                   height: '100%',
@@ -311,9 +323,16 @@ const EventsPage: React.FC = () => {
                 }}
               >
                 <CardContent sx={{ flexGrow: 1 }}>
+                  <Box>
+                    <Typography>
+                        { event.banner && <img className='event_img' src={event.banner_url} 
+                        style={{width: '100%', height: '200px ', objectFit: 'cover', borderRadius: '10px'}} 
+                        alt={event.title} /> }
+                    </Typography>
+                  </Box>
                   <Box display="flex" alignItems="center" mb={2}>
-                    <Avatar sx={{ mr: 1, bgcolor: 'primary.main' }}>
-                      {getSportIcon(event.sportType)}
+                      <Avatar sx={{ mr: 1, bgcolor: 'primary.main' }}>
+                      {getSportIcon(event.sports_type)}
                     </Avatar>
                     <Box flex={1}>
                       <Typography variant="h6" noWrap>
@@ -324,7 +343,6 @@ const EventsPage: React.FC = () => {
                       </Typography>
                     </Box>
                   </Box>
-
                   <Typography 
                     variant="body2" 
                     color="text.secondary" 
@@ -336,55 +354,56 @@ const EventsPage: React.FC = () => {
                       overflow: 'hidden'
                     }}
                   >
-                    {event.description}
+                    {!! event.description !!}
+                    <div dangerouslySetInnerHTML={{__html:  event.description}} />
                   </Typography>
 
                   <Box display="flex" gap={1} mb={2}>
                     <Chip
-                      label={event.type}
-                      color={getEventTypeColor(event.type) as any}
+                      label={event.event_type}
+                      color={getEventTypeColor(event.event_type) as any}
                       size="small"
                     />
                     <Chip
-                      label={event.status}
-                      color={getStatusColor(event.status) as any}
+                      label={event.sports_type}
+                      color={getStatusColor(event.sports_type) as any}
                       size="small"
                     />
                   </Box>
-
-                  <Box display="flex" alignItems="center" mb={1}>
-                    <CalendarIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
-                    <Typography variant="body2">
-                      {format(new Date(event.startDate), 'MMM dd, yyyy')}
-                    </Typography>
-                  </Box>
-
                   <Box display="flex" alignItems="center" mb={1}>
                     <TimeIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
                     <Typography variant="body2">
-                      {(event.startTime || '').slice(0, 5)} - {(event.endTime || '').slice(0, 5)}
+                      {format(new Date(event.event_start_date), 'MMM dd, yyyy HH:mm')} - {format(new Date(event.event_end_date), 'MMM dd, yyyy HH:mm')}
                     </Typography>
                   </Box>
 
                   <Box display="flex" alignItems="center" mb={1}>
                     <LocationIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
                     <Typography variant="body2" noWrap>
-                      {event.location}
+                      {event.address}
                     </Typography>
                   </Box>
 
                   <Box display="flex" alignItems="center" mb={2}>
                     <GroupIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
                     <Typography variant="body2">
-                      {event.currentParticipants} / {event.maxParticipants || '∞'} participants
+                     {event.team_limit || '∞'} participants
                     </Typography>
                   </Box>
 
-                  {event.entryFee > 0 && (
+                  {event.registration_amount > 0 && (
                     <Box display="flex" alignItems="center" mb={2}>
                       <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
                       <Typography variant="body2">
-                        Entry Fee: ₹{event.entryFee}
+                        Entry Fee: ₹{event.registration_amount}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {event.user_name  && (
+                    <Box display="flex" alignItems="center" mb={2}>
+                      <Typography variant="body2">
+                        Organized by: {event.user_name}
                       </Typography>
                     </Box>
                   )}
@@ -433,66 +452,80 @@ const EventsPage: React.FC = () => {
           {selectedEvent && (
             <Grid container spacing={3}>
               <Grid item xs={12}>
-                <Typography variant="body1" paragraph>
-                  {selectedEvent.description}
-                </Typography>
+                { selectedEvent.banner && <img className='event_img' src={selectedEvent.banner_url} 
+                        style={{width: '100%', height: '300px ', objectFit: 'cover', borderRadius: '10px'}} 
+                        alt={selectedEvent.title} /> }
               </Grid>
-
+              
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle2" gutterBottom>Event Type</Typography>
                 <Chip
-                  label={selectedEvent.type}
-                  color={getEventTypeColor(selectedEvent.type) as any}
+                  label={selectedEvent.event_type}
+                  color={getEventTypeColor(selectedEvent.event_type) as any}
                 />
               </Grid>
 
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle2" gutterBottom>Status</Typography>
                 <Chip
-                  label={selectedEvent.status}
-                  color={getStatusColor(selectedEvent.status) as any}
+                  label={selectedEvent.sports_type}
+                  color={getStatusColor(selectedEvent.sports_type) as any}
                 />
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <Typography variant="subtitle2" gutterBottom>Date</Typography>
+                <Typography variant="subtitle2" gutterBottom>Registration Duration</Typography>
                 <Typography>
-                  {format(new Date(selectedEvent.startDate), 'EEEE, MMMM dd, yyyy')}
+                  {format(new Date(selectedEvent.registration_start_date), 'EEEE, MMMM dd, yyyy')} - 
+                  {format(new Date(selectedEvent.registration_end_date), 'EEEE, MMMM dd, yyyy')}
                 </Typography>
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <Typography variant="subtitle2" gutterBottom>Time</Typography>
+                <Typography variant="subtitle2" gutterBottom>Event Start and End </Typography>
                 <Typography>
-                  {(selectedEvent.startTime || '').slice(0, 5)} - {(selectedEvent.endTime || '').slice(0, 5)}
+                  {format(new Date(selectedEvent.event_start_date), 'EEEE, MMMM dd, yyyy HH:mm')} - 
+                  {format(new Date(selectedEvent.event_end_date), 'EEEE, MMMM dd, yyyy HH:mm')}
                 </Typography>
               </Grid>
 
               <Grid item xs={12}>
                 <Typography variant="subtitle2" gutterBottom>Location</Typography>
                 <Typography>
-                  {selectedEvent.location}
+                  {selectedEvent.address}
                 </Typography>
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <Typography variant="subtitle2" gutterBottom>Participants</Typography>
+                <Typography variant="subtitle2" gutterBottom>Total Participants</Typography>
                 <Typography>
-                  {selectedEvent.currentParticipants} / {selectedEvent.maxParticipants || '∞'}
+                   {selectedEvent.team_limit || '∞'}
                 </Typography>
               </Grid>
 
               <Grid item xs={12} md={6}>
                 <Typography variant="subtitle2" gutterBottom>Entry Fee</Typography>
                 <Typography>
-                  {selectedEvent.entryFee > 0 ? `₹${selectedEvent.entryFee}` : 'Free'}
+                  {selectedEvent.registration_amount > 0 ? `₹${selectedEvent.registration_amount}` : 'Free'}
                 </Typography>
               </Grid>
 
               <Grid item xs={12}>
                 <Typography variant="subtitle2" gutterBottom>Organizer</Typography>
                 <Typography>
-                  {selectedEvent.createdBy.name}
+                  {selectedEvent.user_name}
+                </Typography>
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" gutterBottom>Details About Event</Typography>
+                <Typography variant="body1" paragraph>
+                  <div dangerouslySetInnerHTML={{__html:  selectedEvent.description}} />
+                </Typography>
+              </Grid>
+              <Grid item xs={12}>
+              <Typography variant="subtitle2" gutterBottom>Rules</Typography>
+                <Typography variant="body1" paragraph>
+                  <div dangerouslySetInnerHTML={{__html:  selectedEvent.rules}} />
                 </Typography>
               </Grid>
             </Grid>

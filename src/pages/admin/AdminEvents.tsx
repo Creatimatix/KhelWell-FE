@@ -3,19 +3,6 @@ import {
   Box,
   Typography,
   Button,
-  Card,
-  CardContent,
-  Grid,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Chip,
   IconButton,
   Alert,
   CircularProgress,
@@ -27,59 +14,31 @@ import {
   TableRow,
   Paper
 } from '@mui/material';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Visibility as ViewIcon
-} from '@mui/icons-material';
-import { useAuth } from '../../context/AuthContext';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import toast from 'react-hot-toast';
+import { BACKEND_API_URL } from '../../utils/constant';
+// event form types handled in dedicated pages
 
-interface Event {
-  _id: string;
+interface EventItem {
+  id: string;
   title: string;
-  description: string;
-  startDate: string;
-  endDate: string;
-  startTime: string;
-  endTime: string;
-  location: string;
-  sportType: string;
-  type: string;
-  entryFee: number;
-  maxParticipants?: number;
-  currentParticipants: number;
-  status: string;
-  image?: string;
-  createdBy: {
-    name: string;
-    email: string;
-  };
+  sports_type?: string;
+  event_type?: 'individual' | 'team' | string;
+  registration_end_date?: string;
+  registration_start_date?: string;
+  event_start_date?: string;
+  event_end_date?: string;
+  address?: string;
+  banner_url?: string;
+  banner?: string;
 }
 
 const AdminEvents: React.FC = () => {
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    startDate: '',
-    endDate: '',
-    startTime: '',
-    endTime: '',
-    location: '',
-    sportType: 'general',
-    type: 'tournament',
-    entryFee: 0,
-    maxParticipants: '',
-    image: ''
-  });
-
-  const { user } = useAuth();
+  // dialog removed in favor of dedicated pages
+  // const [editingEvent, setEditingEvent] = useState<EventItem | null>(null);
 
   useEffect(() => {
     fetchEvents();
@@ -89,7 +48,7 @@ const AdminEvents: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/events', {
+      const response = await fetch(BACKEND_API_URL+'events', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -97,7 +56,7 @@ const AdminEvents: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setEvents(data.events || []);
+        setEvents(data.events.data || []);
       } else {
         throw new Error('Failed to fetch events');
       }
@@ -110,75 +69,12 @@ const AdminEvents: React.FC = () => {
   };
 
   const handleCreateEvent = () => {
-    setEditingEvent(null);
-    setFormData({
-      title: '',
-      description: '',
-      startDate: '',
-      endDate: '',
-      startTime: '',
-      endTime: '',
-      location: '',
-      sportType: 'general',
-      type: 'tournament',
-      entryFee: 0,
-      maxParticipants: '',
-      image: ''
-    });
-    setDialogOpen(true);
+    // navigate to create page
+    window.location.href = '/admin/events/create';
   };
 
-  const handleEditEvent = (event: Event) => {
-    setEditingEvent(event);
-    setFormData({
-      title: event.title,
-      description: event.description,
-      startDate: event.startDate.split('T')[0],
-      endDate: event.endDate.split('T')[0],
-      startTime: event.startTime,
-      endTime: event.endTime,
-      location: event.location,
-      sportType: event.sportType,
-      type: event.type,
-      entryFee: event.entryFee,
-      maxParticipants: event.maxParticipants?.toString() || '',
-      image: event.image || ''
-    });
-    setDialogOpen(true);
-  };
-
-  const handleSubmit = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const url = editingEvent 
-        ? `http://localhost:5001/api/events/${editingEvent._id}`
-        : 'http://localhost:5001/api/events';
-      
-      const method = editingEvent ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          ...formData,
-          maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants) : undefined
-        })
-      });
-
-      if (response.ok) {
-        toast.success(editingEvent ? 'Event updated successfully!' : 'Event created successfully!');
-        setDialogOpen(false);
-        fetchEvents();
-      } else {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to save event');
-      }
-    } catch (err: any) {
-      toast.error(err.message);
-    }
+  const handleEditEvent = (event: EventItem) => {
+    window.location.href = `/admin/events/${event.id}/edit`;
   };
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -210,15 +106,7 @@ const AdminEvents: React.FC = () => {
     return new Date(dateString).toLocaleDateString('en-IN');
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'upcoming': return 'primary';
-      case 'ongoing': return 'success';
-      case 'completed': return 'info';
-      case 'cancelled': return 'error';
-      default: return 'default';
-    }
-  };
+  // no status color for simplified table
 
   if (loading) {
     return (
@@ -252,41 +140,38 @@ const AdminEvents: React.FC = () => {
           <TableHead>
             <TableRow>
               <TableCell>Title</TableCell>
-              <TableCell>Type</TableCell>
+              <TableCell>Event Type</TableCell>
               <TableCell>Sport</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell>Location</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Participants</TableCell>
+              <TableCell>Reg. Dates</TableCell>
+              <TableCell>Event Dates</TableCell>
+              <TableCell>Address</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {events.map((event) => (
-              <TableRow key={event._id}>
-                <TableCell>{event.title}</TableCell>
+              <TableRow key={event.id}>
                 <TableCell>
-                  <Chip label={event.type} size="small" />
-                </TableCell>
-                <TableCell>{event.sportType}</TableCell>
-                <TableCell>{formatDate(event.startDate)}</TableCell>
-                <TableCell>{event.location}</TableCell>
+                  { event.banner && <img src={event.banner_url} style={{width: '100px', height: '60px', objectFit: 'cover'}} alt={event.title} /> }
+                {event.title}</TableCell>
+                <TableCell>{event.event_type}</TableCell>
+                <TableCell>{event.sports_type}</TableCell>
                 <TableCell>
-                  <Chip 
-                    label={event.status} 
-                    color={getStatusColor(event.status) as any}
-                    size="small" 
-                  />
+                  {(event.registration_start_date && formatDate(event.registration_start_date)) || '-'}
+                  {' - '}
+                  {(event.registration_end_date && formatDate(event.registration_end_date)) || '-'}
                 </TableCell>
                 <TableCell>
-                  {event.currentParticipants}
-                  {event.maxParticipants && ` / ${event.maxParticipants}`}
+                  {(event.event_start_date && formatDate(event.event_start_date)) || '-'}
+                  {' - '}
+                  {(event.event_end_date && formatDate(event.event_end_date)) || '-'}
                 </TableCell>
+                <TableCell>{event.address || '-'}</TableCell>
                 <TableCell>
                   <IconButton onClick={() => handleEditEvent(event)} size="small">
                     <EditIcon />
                   </IconButton>
-                  <IconButton onClick={() => handleDeleteEvent(event._id)} size="small" color="error">
+                  <IconButton onClick={() => handleDeleteEvent(event.id)} size="small" color="error">
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
@@ -296,157 +181,7 @@ const AdminEvents: React.FC = () => {
         </Table>
       </TableContainer>
 
-      {/* Create/Edit Event Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingEvent ? 'Edit Event' : 'Create New Event'}
-        </DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Event Title"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth required>
-                <InputLabel>Event Type</InputLabel>
-                <Select
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  label="Event Type"
-                >
-                  <MenuItem value="tournament">Tournament</MenuItem>
-                  <MenuItem value="championship">Championship</MenuItem>
-                  <MenuItem value="league">League</MenuItem>
-                  <MenuItem value="exhibition">Exhibition</MenuItem>
-                  <MenuItem value="training">Training</MenuItem>
-                  <MenuItem value="other">Other</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Description"
-                multiline
-                rows={3}
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Start Date"
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="End Date"
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Start Time"
-                type="time"
-                value={formData.startTime}
-                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="End Time"
-                type="time"
-                value={formData.endTime}
-                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Location"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Sport Type</InputLabel>
-                <Select
-                  value={formData.sportType}
-                  onChange={(e) => setFormData({ ...formData, sportType: e.target.value })}
-                  label="Sport Type"
-                >
-                  <MenuItem value="football">Football</MenuItem>
-                  <MenuItem value="cricket">Cricket</MenuItem>
-                  <MenuItem value="tennis">Tennis</MenuItem>
-                  <MenuItem value="basketball">Basketball</MenuItem>
-                  <MenuItem value="badminton">Badminton</MenuItem>
-                  <MenuItem value="volleyball">Volleyball</MenuItem>
-                  <MenuItem value="multi-sport">Multi-Sport</MenuItem>
-                  <MenuItem value="general">General</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Entry Fee (₹)"
-                type="number"
-                value={formData.entryFee}
-                onChange={(e) => setFormData({ ...formData, entryFee: parseFloat(e.target.value) || 0 })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Max Participants"
-                type="number"
-                value={formData.maxParticipants}
-                onChange={(e) => setFormData({ ...formData, maxParticipants: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Image URL (optional)"
-                value={formData.image}
-                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {editingEvent ? 'Update Event' : 'Create Event'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Dialog removed; create/edit now happen on dedicated pages */}
     </Box>
   );
 };

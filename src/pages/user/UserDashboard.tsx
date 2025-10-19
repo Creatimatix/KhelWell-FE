@@ -34,10 +34,25 @@ import {
   TrendingUp as TrendingIcon,
   CalendarToday as CalendarIcon,
   DirectionsRun as ActivityIcon,
-  BookOnline as BookingIcon
+  BookOnline as BookingIcon,
+  Visibility as ViewIcon,
+  Search as SearchIcon,
+  FilterList as FilterIcon,
+  Group as GroupIcon,
+  SportsSoccer as SoccerIcon,
+  SportsCricket as CricketIcon,
+  SportsTennis as TennisIcon,
+  SportsBasketball as BasketballIcon,
+  EmojiEvents as TrophyIcon,
+  Add as AddIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { BACKEND_API_URL } from '../../utils/constant';
+import TurfCard from '../TurfCard';
+
+import { format } from 'date-fns';
+import { Event } from '../../types';
 
 interface Turf {
   id: number;
@@ -60,23 +75,6 @@ interface Turf {
   isAvailable?: boolean;
 }
 
-interface Event {
-  _id: string;
-  title: string;
-  description: string;
-  image?: string;
-  startDate: string;
-  endDate: string;
-  startTime: string;
-  endTime: string;
-  location: string;
-  sportType: string;
-  type: string;
-  entryFee: number;
-  status: string;
-  currentParticipants: number;
-  maxParticipants?: number;
-}
 
 interface Booking {
   id: number;
@@ -95,6 +93,14 @@ interface Booking {
   paymentStatus: string;
 }
 
+
+const isRegistrationOpen = (event: Event) => {
+  const now = new Date();
+  const startDate = new Date(event.event_start_date);
+  // return startDate > now;
+  return false;
+};
+
 const UserDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -109,6 +115,10 @@ const UserDashboard: React.FC = () => {
     favoriteSport: ''
   });
 
+  
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -119,41 +129,46 @@ const UserDashboard: React.FC = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
 
       // Fetch nearby turfs
-      const turfsResponse = await fetch('http://localhost:5001/api/turfs/nearby', {
+      const turfsResponse = await fetch(BACKEND_API_URL+'turfs/nearby', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': `application/json`
         }
       });
       const turfsData = await turfsResponse.json();
-
+    
       // Fetch events
-      const eventsResponse = await fetch('http://localhost:5001/api/events', {
+      const eventsResponse = await fetch(BACKEND_API_URL+'events', {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': `application/json`
         }
       });
       const eventsData = await eventsResponse.json();
 
       // Fetch user dashboard data
-      const dashboardResponse = await fetch('http://localhost:5001/api/users/dashboard', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const dashboardData = await dashboardResponse.json();
+      // const dashboardResponse = await fetch(BACKEND_API_URL+'users/dashboard', {
+      //   headers: {
+      //     'Authorization': `Bearer ${token}`,
+      //     'Accept': `application/json`
+      //   }
+      // });
+      // const dashboardData = await dashboardResponse.json();
 
+      console.log("turfsData:", turfsData.turfs)
+      
       setNearbyTurfs(turfsData.turfs || []);
-      setEvents(eventsData.events || []);
-      setRecentBookings(dashboardData.recentBookings || []);
-      setStatistics({
-        totalBookings: dashboardData.statistics?.totalBookings || 0,
-        completedBookings: dashboardData.statistics?.completedBookings || 0,
-        totalSpent: dashboardData.statistics?.totalSpent || 0,
-        favoriteSport: dashboardData.statistics?.favoriteSport || ''
-      });
+      setEvents(eventsData.events.data || []);
+      // setRecentBookings(dashboardData.recentBookings || []);
+      // setStatistics({
+      //   totalBookings: dashboardData.statistics?.totalBookings || 0,
+      //   completedBookings: dashboardData.statistics?.completedBookings || 0,
+      //   totalSpent: dashboardData.statistics?.totalSpent || 0,
+      //   favoriteSport: dashboardData.statistics?.favoriteSport || ''
+      // });
     } catch (err: any) {
       setError('Failed to load dashboard data');
       console.error('Dashboard error:', err);
@@ -191,6 +206,18 @@ const UserDashboard: React.FC = () => {
     }
   };
 
+  
+  const getEventTypeColor = (type: string) => {
+    switch (type) {
+      case 'tournament': return 'error';
+      case 'league': return 'warning';
+      case 'championship': return 'success';
+      case 'friendly': return 'info';
+      case 'training': return 'default';
+      default: return 'default';
+    }
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -198,6 +225,17 @@ const UserDashboard: React.FC = () => {
       </Box>
     );
   }
+
+  const getSportIcon = (sport: string) => {
+    console.log("Sport: ", sport.toLowerCase());
+    switch (sport.toLowerCase()) {
+      case 'football': return <SoccerIcon />;
+      case 'cricket': return <CricketIcon />;
+      case 'tennis': return <TennisIcon />;
+      case 'basketball': return <BasketballIcon />;
+      default: return <TrophyIcon />;
+    }
+  };
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -340,52 +378,8 @@ const UserDashboard: React.FC = () => {
               Turfs Near You
             </Typography>
             <Grid container spacing={3}>
-              {nearbyTurfs.map((turf) => (
-                <Grid item xs={12} sm={6} md={4} key={turf.id}>
-                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={turf.images[0] || '/default-turf.jpg'}
-                      alt={turf.name}
-                    />
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Typography variant="h6" gutterBottom>
-                        {turf.name}
-                      </Typography>
-                      <Box display="flex" alignItems="center" mb={1}>
-                        <SportsIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary">
-                          {turf.sportType}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" alignItems="center" mb={1}>
-                        <LocationIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary">
-                          {turf.location?.city || 'Location not available'}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" alignItems="center" mb={2}>
-                        <Rating value={turf.rating?.average || 0} readOnly size="small" />
-                        <Typography variant="body2" sx={{ ml: 1 }}>
-                          ({turf.rating?.count || 0})
-                        </Typography>
-                      </Box>
-                      <Box display="flex" justifyContent="space-between" alignItems="center">
-                        <Typography variant="h6" color="primary">
-                          ₹{turf.pricing?.hourlyRate || 0}/hr
-                        </Typography>
-                        <Button
-                          variant="contained"
-                          size="small"
-                          onClick={() => navigate(`/turfs/${turf.id}`)}
-                        >
-                          Book Now
-                        </Button>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
+              {nearbyTurfs.map((turf: any) => (
+                <TurfCard key={turf.id} turfItem={turf}  />
               ))}
               {nearbyTurfs.length === 0 && (
                 <Grid item xs={12}>
@@ -407,64 +401,128 @@ const UserDashboard: React.FC = () => {
               Upcoming Events
             </Typography>
             <Grid container spacing={3}>
-              {events.map((event) => (
-                <Grid item xs={12} sm={6} md={4} key={event._id}>
-                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={event.image || '/default-event.jpg'}
-                      alt={event.title}
-                    />
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Typography variant="h6" gutterBottom>
-                        {event.title}
-                      </Typography>
-                      <Box display="flex" alignItems="center" mb={1}>
-                        <SportsIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary">
-                          {event.sportType}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" alignItems="center" mb={1}>
-                        <CalendarIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary">
-                          {formatDate(event.startDate)}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" alignItems="center" mb={1}>
-                        <TimeIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary">
-                          {formatTime(event.startTime)} - {formatTime(event.endTime)}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" alignItems="center" mb={2}>
-                        <LocationIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary">
-                          {event.location}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" justifyContent="space-between" alignItems="center">
-                        <Typography variant="h6" color="primary">
-                          ₹{event.entryFee}
-                        </Typography>
-                        <Chip
-                          label={`${event.currentParticipants}/${event.maxParticipants || '∞'}`}
-                          size="small"
-                          color="primary"
-                        />
-                      </Box>
-                      <Button
-                        variant="contained"
-                        fullWidth
-                        sx={{ mt: 2 }}
-                        onClick={() => navigate(`/events/${event._id}`)}
-                      >
-                        View Details
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Grid>
+              {events.map((event: any) => (
+                 <Grid item xs={12} md={6} lg={4} key={event.id}>
+                 <Card 
+                   sx={{ 
+                     height: '100%',
+                     display: 'flex',
+                     flexDirection: 'column',
+                     '&:hover': { boxShadow: 4 }
+                   }}
+                 >
+                   <CardContent sx={{ flexGrow: 1 }}>
+                     <Box>
+                       <Typography>
+                           { event.banner && <img className='event_img' src={event.banner_url} 
+                           style={{width: '100%', height: '200px ', objectFit: 'cover', borderRadius: '10px'}} 
+                           alt={event.title} /> }
+                       </Typography>
+                     </Box>
+                     <Box display="flex" alignItems="center" mb={2}>
+                         <Avatar sx={{ mr: 1, bgcolor: 'primary.main' }}>
+                         {getSportIcon(event.sports_type)}
+                       </Avatar>
+                       <Box flex={1}>
+                         <Typography variant="h6" noWrap>
+                           {event.title}
+                         </Typography>
+                         <Typography variant="caption" color="text.secondary">
+                           {event.location}
+                         </Typography>
+                       </Box>
+                     </Box>
+                     <Typography 
+                       variant="body2" 
+                       color="text.secondary" 
+                       sx={{ 
+                         mb: 2,
+                         display: '-webkit-box',
+                         WebkitLineClamp: 2,
+                         WebkitBoxOrient: 'vertical',
+                         overflow: 'hidden'
+                       }}
+                     >
+                       {!! event.description !!}
+                       <div dangerouslySetInnerHTML={{__html:  event.description}} />
+                     </Typography>
+   
+                     <Box display="flex" gap={1} mb={2}>
+                       <Chip
+                         label={event.event_type}
+                         color={getEventTypeColor(event.event_type) as any}
+                         size="small"
+                       />
+                       <Chip
+                         label={event.sports_type}
+                         color={getStatusColor(event.sports_type) as any}
+                         size="small"
+                       />
+                     </Box>
+                     <Box display="flex" alignItems="center" mb={1}>
+                       <TimeIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                       <Typography variant="body2">
+                         {format(new Date(event.event_start_date), 'MMM dd, yyyy HH:mm')} - {format(new Date(event.event_end_date), 'MMM dd, yyyy HH:mm')}
+                       </Typography>
+                     </Box>
+   
+                     <Box display="flex" alignItems="center" mb={1}>
+                       <LocationIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                       <Typography variant="body2" noWrap>
+                         {event.address}
+                       </Typography>
+                     </Box>
+   
+                     <Box display="flex" alignItems="center" mb={2}>
+                       <GroupIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                       <Typography variant="body2">
+                        {event.team_limit || '∞'} participants
+                       </Typography>
+                     </Box>
+   
+                     {event.registration_amount > 0 && (
+                       <Box display="flex" alignItems="center" mb={2}>
+                         <MoneyIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />
+                         <Typography variant="body2">
+                           Entry Fee: ₹{event.registration_amount}
+                         </Typography>
+                       </Box>
+                     )}
+   
+                     {event.user_name  && (
+                       <Box display="flex" alignItems="center" mb={2}>
+                         <Typography variant="body2">
+                           Organized by: {event.user_name}
+                         </Typography>
+                       </Box>
+                     )}
+   
+                     <Box display="flex" gap={1} mt="auto">
+                       <Button
+                         variant="outlined"
+                         size="small"
+                         startIcon={<ViewIcon />}
+                         onClick={() => {
+                           setSelectedEvent(event);
+                           setViewDialogOpen(true);
+                         }}
+                         fullWidth
+                       >
+                         View Details
+                       </Button>
+                       {isRegistrationOpen(event) && (
+                         <Button
+                           variant="contained"
+                           size="small"
+                           fullWidth
+                         >
+                           Register
+                         </Button>
+                       )}
+                     </Box>
+                   </CardContent>
+                 </Card>
+               </Grid>
               ))}
               {events.length === 0 && (
                 <Grid item xs={12}>

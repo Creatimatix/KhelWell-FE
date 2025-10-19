@@ -25,10 +25,11 @@ import {
 import { useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { useAuth } from '../context/AuthContext';
+import { BACKEND_API_URL } from '../utils/constant';
 
 const OTPLoginPage: React.FC = () => {
   const [step, setStep] = useState(0);
-  const [phone, setPhone] = useState('+91 ');
+  const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +38,8 @@ const OTPLoginPage: React.FC = () => {
   const [resendDisabled, setResendDisabled] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
   const phoneInputRef = useRef<HTMLInputElement>(null);
+
+  const [userOTP, setUserOTP] = useState(null);
 
   const navigate = useNavigate();
   const { login, setUser, setToken } = useAuth();
@@ -69,7 +72,7 @@ const OTPLoginPage: React.FC = () => {
 
     try {
       console.log('Sending OTP request with phone:', phone);
-      const response = await fetch('http://localhost:5001/api/otp/send', {
+      const response = await fetch(BACKEND_API_URL+'auth/request-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +82,7 @@ const OTPLoginPage: React.FC = () => {
 
       const data = await response.json();
       console.log('OTP send response:', response.status, data);
-
+      setUserOTP(data?.otp)
       if (response.ok) {
         setSuccess(data.message);
         setStep(1);
@@ -122,7 +125,7 @@ const OTPLoginPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:5001/api/otp/verify', {
+      const response = await fetch(BACKEND_API_URL+'auth/verify-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,8 +137,8 @@ const OTPLoginPage: React.FC = () => {
 
       if (response.ok) {
         // Store token and user data directly since OTP login is different from email login
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('auth_user', JSON.stringify(data.user));
         
         // Update auth context
         setUser(data.user);
@@ -206,32 +209,29 @@ const OTPLoginPage: React.FC = () => {
   };
 
   const formatPhone = (value: string) => {
-    // Remove all non-digits except +
-    const cleaned = value.replace(/[^\d+]/g, '');
-    
-    // Ensure it starts with +91
-    if (!cleaned.startsWith('+91')) {
-      return '+91 ' + cleaned.replace('+91', '');
-    }
+    // Remove all non-digits
+    const cleaned = value.replace(/[^\d]/g, '');
     
     // Remove +91 and get the number part
     const numberPart = cleaned.replace('+91', '');
     
     // Format Indian phone number: +91 99999 99999
-    if (numberPart.length <= 5) {
-      return '+91 ' + numberPart;
-    } else if (numberPart.length <= 10) {
-      return '+91 ' + numberPart.slice(0, 5) + ' ' + numberPart.slice(5);
-    } else {
-      return '+91 ' + numberPart.slice(0, 5) + ' ' + numberPart.slice(5, 10);
-    }
+    // if (numberPart.length <= 5) {
+    //   return numberPart;
+    // } else if (numberPart.length <= 10) {
+    //   return numberPart.slice(0, 5) + ' ' + numberPart.slice(5);
+    // } else {
+    //   return numberPart.slice(0, 5) + ' ' + numberPart.slice(5, 10);
+    // }
+
+    return numberPart.slice(0, 5) + numberPart.slice(5, 10);
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = formatPhone(e.target.value);
     setPhone(newValue);
     
-    // Set cursor position after +91 
+    // // Set cursor position after +91 
     setTimeout(() => {
       if (phoneInputRef.current) {
         const cursorPosition = Math.max(4, newValue.length); // At least after "+91 "
@@ -259,7 +259,7 @@ const OTPLoginPage: React.FC = () => {
               <Logo variant="default" size="medium" />
             </Box>
             <Typography variant="h4" gutterBottom>
-              OTP Login
+              OTP Login - { userOTP }
             </Typography>
             <Typography variant="body2" color="textSecondary">
               Login to KhelWell using your phone number and OTP
@@ -295,7 +295,7 @@ const OTPLoginPage: React.FC = () => {
                 onChange={handlePhoneChange}
                 onFocus={handlePhoneFocus}
                 inputRef={phoneInputRef}
-                placeholder="+91 99999 99999"
+                placeholder="9999999999"
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -361,6 +361,7 @@ const OTPLoginPage: React.FC = () => {
                     {loading ? <CircularProgress size={24} /> : 'Verify OTP'}
                   </Button>
                 </Grid>
+                {/* 
                 <Grid item xs={12} sm={6}>
                   <Button
                     fullWidth
@@ -372,8 +373,9 @@ const OTPLoginPage: React.FC = () => {
                       ? `Resend (${resendCountdown}s)` 
                       : 'Resend OTP'
                     }
-                  </Button>
+                  </Button> 
                 </Grid>
+                */}
               </Grid>
 
               <Button

@@ -269,9 +269,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         path: getDashboardPath()
       }
     ];
-
+    
+    console.log("user:", user); 
     // Add role-specific menu items
     if (user && user.role === 'user') {
+      
       menuItems.push(
         {
           label: 'My Bookings',
@@ -443,15 +445,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             }}
           >
             {user && user.role === 'user' && (
+              
               <>
                 <MenuItem onClick={() => { navigate('/user/bookings'); handleMenuClose(); }}>
                   <BookOnline sx={{ mr: 1 }} />
                   My Bookings
                 </MenuItem>
-                <MenuItem onClick={() => { navigate('/user/profile'); handleMenuClose(); }}>
-                  <Person sx={{ mr: 1 }} />
-                  Profile
-                </MenuItem>
+                
               </>
             )}
             {user && user.role === 'owner' && (
@@ -482,6 +482,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </MenuItem>
               </>
             )}
+            <MenuItem onClick={() => { navigate('/user/profile'); handleMenuClose(); }}>
+              <Person sx={{ mr: 1 }} />
+              Profile
+            </MenuItem>
             <MenuItem onClick={handleLogout}>
               <Logout sx={{ mr: 1 }} />
               Logout

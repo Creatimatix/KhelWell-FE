@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -42,6 +42,8 @@ import SlotBooking from '../components/SlotBooking';
 import ReviewList from '../components/ReviewList';
 import ReviewForm from '../components/ReviewForm';
 import ImageGallery from '../components/ImageSlider/ImageGallery';
+import { string } from 'yup';
+import { formatPrice } from '../utils/constant';
 
 const TurfDetailPage: React.FC = () => {
   const param = useParams();
@@ -52,10 +54,14 @@ const TurfDetailPage: React.FC = () => {
   const queryClient = useQueryClient();
   
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
   const [showReviewForm, setShowReviewForm] = useState(false);
 
-  
+  const [selectedSportTab, setSelectedSportTab] = useState(0);
+
+
+  const [selectedSport, setSelectedSport] = useState(0);
+  const [selectedSportPrice, setSelectedSportPrice] =  useState<number | 0>(0);
+
     const { data: turfResponse, isLoading, error } = useQuery(
       ['turfs', slug],
       () => turfService.getTurfBySlug(slug),
@@ -68,13 +74,24 @@ const TurfDetailPage: React.FC = () => {
       
       try {
         const raw = (turfResponse as any).data || turfResponse;
+        // setActiveTabForBooking(raw[0].rate_per_hour)
         return raw;
       } catch (e) {
         console.error('Error normalizing turfs response:', e);
         return null;
       }
     }, [turfResponse]);
-  const handleBooking = () => {
+    
+    useEffect(() => {
+      const first = turf?.sports && turf.sports.length > 0 ? turf.sports[0] : null;
+      if (first) {
+        setSelectedSport(first.id);
+        setSelectedSportPrice(first.rate_per_hour);
+      } 
+    }, [turf?.sports]);
+
+
+    const handleBooking = () => {
     if (!user) {
       navigate('/login');
       return;
@@ -132,9 +149,7 @@ const TurfDetailPage: React.FC = () => {
     }
   };
 
-  const formatPrice = (price: number) => {
-    return `₹${price}/hour`;
-  };
+
 
   if (isLoading) {
     return (
@@ -157,14 +172,6 @@ const TurfDetailPage: React.FC = () => {
   }
 
 
-  
-  const turfImages = [
-        "https://images.unsplash.com/photo-1499696010180-025ef6e1a8f9?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1470&q=80",
-        "https://images.unsplash.com/photo-1432462770865-65b70566d673?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80",
-        "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2940&q=80",
-        "https://images.unsplash.com/photo-1518623489648-a173ef7824f3?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2762&q=80",
-        "https://images.unsplash.com/photo-1682407186023-12c70a4a35e0?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2832&q=80",
-  ];
 
   interface CustomTabPanelProps {
     children?: React.ReactNode;
@@ -198,9 +205,16 @@ const TurfDetailPage: React.FC = () => {
 
 
 const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
-  };
+   setSelectedSportTab(newValue);
+};
 
+
+  const handleSelectedSportType = (sport_id: number, price: any) =>{
+      setSelectedSport(sport_id)
+      setSelectedSportPrice(price)
+  }
+
+  console.log("selectedSport:", selectedSport);
   
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -239,12 +253,12 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
 
             {/* Show if multiple sports available */}
             {
-              turf?.sports && 
+              turf?.sports && turf.sports.length > 0 && 
                <Card sx={{ mb: 3}}>
                 <CardContent>
                   <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                     <Tabs
-                      value={activeTab}
+                      value={selectedSportTab}
                       onChange={handleTabChange}
                       aria-label="sports tabs"
                       variant="scrollable"
@@ -279,11 +293,11 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
                       },
                       idx: number
                     ) => (
-                      <CustomTabPanel value={activeTab} index={idx} key={sport.id}>
+                      <CustomTabPanel value={selectedSportTab} index={idx} key={sport.id}>
                         {/* Add more sport details here if available */}
                         <Typography variant="body2" color="text.secondary">
                            <h3 className="text-lg font-semibold py-2">{sport?.sport_type?.name} Details</h3>
-                              <p><strong>Rate Per Hour:</strong> ${sport?.rate_per_hour}</p>
+                              <p><strong>Rate Per Hour:</strong> ₹{sport?.rate_per_hour}</p>
                               <p><strong>Dimensions:</strong> {sport?.dimensions}</p>
                               <p><strong>Capacity:</strong> {sport?.capacity} people</p>
                               <p><strong>Rules:</strong></p>
@@ -329,7 +343,7 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
                         </ListItemIcon>
                         <ListItemText
                           primary="Price"
-                          secondary={formatPrice(turf.pricing?.hourlyRate || 0)}
+                          secondary={formatPrice(selectedSportPrice || 0)}
                         />
                       </ListItem>
                     </List>
@@ -449,13 +463,38 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
             <Card sx={{ position: 'sticky', top: 20 }}>
               <CardContent>
                 <Typography variant="h4" color="primary" gutterBottom>
-                  {formatPrice(turf.pricing?.hourlyRate || 0)}
+                  {formatPrice(selectedSportPrice || 0)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   per hour
                 </Typography>
-                
-                <Button
+                <div className="booking-section">
+                    <div className='sport-choose-area'>
+                        {
+                            turf?.sports?.map((
+                              sport: { 
+                                id: number; 
+                                name: string; 
+                                rate_per_hour: number; 
+                                sport_type?: { name?: string } 
+                              },
+                              idx: number
+                            ) =>  (
+                                <div className={`option-${idx}`}  key={idx} >
+                                    <input 
+                                        type="radio" 
+                                        className="sport-list" 
+                                        name="booking-type"
+                                        checked={selectedSport === sport.id}
+                                        onChange={() => handleSelectedSportType(sport.id,sport.rate_per_hour)}
+                                />
+                                <span>{ sport.sport_type?.name || sport.name }</span>
+                                </div>
+                            ))
+                        }
+                    </div>
+                </div>
+                {/* <Button
                   fullWidth
                   variant="contained"
                   size="large"
@@ -463,7 +502,7 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
                   sx={{ mt: 2, mb: 2 }}
                 >
                   Book Now
-                </Button>
+                </Button> */}
 
                 {user && (
                   <Button
