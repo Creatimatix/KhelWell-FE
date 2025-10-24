@@ -84,6 +84,7 @@ const TurfListPage: React.FC = () => {
   }, [turfsResponse]);
 
   const handleSearch = () => {
+    console.log("searchTerm:", searchTerm)
     setFilters(prev => ({
       ...prev,
       city: searchTerm,
@@ -136,6 +137,18 @@ const TurfListPage: React.FC = () => {
       </Container>
     );
   }
+
+  const normalizeRating = (v: unknown): number => {
+    if (v == null) return 0;
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') {
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? n : 0;
+    }
+    return 0;
+  };
+
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {/* Header */}
@@ -154,7 +167,7 @@ const TurfListPage: React.FC = () => {
           <Grid item xs={12} md={4}>
             <TextField
               fullWidth
-              placeholder="Search by city..."
+              placeholder="Search by name, area, city..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -265,9 +278,9 @@ const TurfListPage: React.FC = () => {
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Rating value={turf.rating?.average || turf.rating || 0} precision={0.5} readOnly size="small" />
+                      <Rating value={normalizeRating(turf?.average_rating ?? turf.average_rating ?? 0)} precision={0.5} readOnly size="small" />
                       <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                        ({turf.rating?.count || 0} reviews)
+                        ({turf?.total_reviews || 0} reviews)
                       </Typography>
                     </Box>
 

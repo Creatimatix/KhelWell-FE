@@ -23,6 +23,7 @@ import {
   Verified as VerifiedIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { BACKEND_API_URL } from '../utils/constant';
 
 interface Review {
   id: number;
@@ -40,18 +41,21 @@ interface Review {
 interface ReviewListProps {
   turfId: number;
   onReviewUpdate?: () => void;
+  avgTurfRating: any;
 }
 
-const ReviewList: React.FC<ReviewListProps> = ({ turfId, onReviewUpdate }) => {
+const ReviewList: React.FC<ReviewListProps> = ({ turfId, onReviewUpdate, avgTurfRating }) => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalReviews, setTotalReviews] = useState(0);
-  const [averageRating, setAverageRating] = useState(0);
+  const [averageRating, setAverageRating] = useState<number>(0.0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
+  const [editingReviewId, setEditingReviewId] = useState<number | null>(null);
+  const [editInitialData, setEditInitialData] = useState<{rating: number; comment: string} | null>(null);
 
   const { user } = useAuth();
 
@@ -63,19 +67,21 @@ const ReviewList: React.FC<ReviewListProps> = ({ turfId, onReviewUpdate }) => {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:5001/api/reviews/turf/${turfId}?page=${page}&limit=5`
+        `${BACKEND_API_URL}reviews/turf/${turfId}?page=${page}&limit=5`
       );
-      const data = await response.json();
+      const json = await response.json();
+      const data = json?.data || [];
 
-      if (response.ok) {
-        setReviews(data.reviews);
-        setTotalPages(data.pagination.totalPages);
-        setTotalReviews(data.pagination.totalItems);
-        setAverageRating(data.summary.averageRating);
+      if (data?.data?.length >  0) {
+        setReviews(data.data);
+        setTotalPages(data.from);
+        setTotalReviews(data?.data?.length);
+        setAverageRating(avgTurfRating);
       } else {
-        setError(data.message || 'Failed to load reviews');
+        setError('No reviews found');
       }
     } catch (err: any) {
+      console.log("error:", err); 
       setError('Failed to load reviews');
     } finally {
       setLoading(false);
@@ -84,8 +90,8 @@ const ReviewList: React.FC<ReviewListProps> = ({ turfId, onReviewUpdate }) => {
 
   const handleEditReview = async (reviewId: number, rating: number, comment: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/reviews/${reviewId}`, {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${BACKEND_API_URL}reviews/${reviewId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -120,8 +126,8 @@ const ReviewList: React.FC<ReviewListProps> = ({ turfId, onReviewUpdate }) => {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/reviews/${reviewId}`, {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${BACKEND_API_URL}reviews/${reviewId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -289,16 +295,6 @@ const ReviewList: React.FC<ReviewListProps> = ({ turfId, onReviewUpdate }) => {
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
       >
-        <MenuItem
-          onClick={() => {
-            handleMenuClose();
-            // Handle edit - you can implement this based on your needs
-            console.log('Edit review:', selectedReview);
-          }}
-        >
-          <EditIcon sx={{ mr: 1 }} />
-          Edit Review
-        </MenuItem>
         <MenuItem
           onClick={() => {
             handleMenuClose();

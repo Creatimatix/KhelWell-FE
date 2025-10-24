@@ -43,7 +43,7 @@ import ReviewList from '../components/ReviewList';
 import ReviewForm from '../components/ReviewForm';
 import ImageGallery from '../components/ImageSlider/ImageGallery';
 import { string } from 'yup';
-import { formatPrice } from '../utils/constant';
+import { BACKEND_API_URL, formatPrice } from '../utils/constant';
 
 const TurfDetailPage: React.FC = () => {
   const param = useParams();
@@ -101,15 +101,15 @@ const TurfDetailPage: React.FC = () => {
 
   const handleReviewSubmit = async (rating: number, comment: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/reviews', {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(BACKEND_API_URL+'reviews', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          turf_id: parseInt(id!),
+          turf_id: parseInt(turf.id!),
           rating,
           comment
         })
@@ -295,14 +295,14 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
                     ) => (
                       <CustomTabPanel value={selectedSportTab} index={idx} key={sport.id}>
                         {/* Add more sport details here if available */}
-                        <Typography variant="body2" color="text.secondary">
-                           <h3 className="text-lg font-semibold py-2">{sport?.sport_type?.name} Details</h3>
-                              <p><strong>Rate Per Hour:</strong> ₹{sport?.rate_per_hour}</p>
-                              <p><strong>Dimensions:</strong> {sport?.dimensions}</p>
-                              <p><strong>Capacity:</strong> {sport?.capacity} people</p>
-                              <p><strong>Rules:</strong></p>
-                              <p>{sport?.rules}</p>
-                        </Typography>
+                        <Box>
+                           <Typography variant="h6" className="text-lg font-semibold py-2">{sport?.sport_type?.name} Details</Typography>
+                              <Typography variant="body2"><strong>Rate Per Hour:</strong> ₹{sport?.rate_per_hour}</Typography>
+                              <Typography variant="body2"><strong>Dimensions:</strong> {sport?.dimensions}</Typography>
+                              <Typography variant="body2"><strong>Capacity:</strong> {sport?.capacity} people</Typography>
+                              <Typography variant="body2"><strong>Rules:</strong></Typography>
+                              <Typography variant="body2">{sport?.rules}</Typography>
+                        </Box>
                       </CustomTabPanel>
                     )
                   )}
@@ -441,7 +441,7 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
 
                 {showReviewForm && (
                   <ReviewForm
-                    turfId={parseInt(id!)}
+                    turfId={parseInt(turf.id!)}
                     turfName={turf.name}
                     onSubmit={handleReviewSubmit}
                     onCancel={() => setShowReviewForm(false)}
@@ -449,11 +449,13 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
                 )}
 
                 <ReviewList 
-                  turfId={parseInt(id!)} 
+                  turfId={parseInt(turf.id!)} 
                   onReviewUpdate={() => {
                     queryClient.invalidateQueries(['turf', id]);
                   }}
+                  avgTurfRating={turf.rating?.average || 0}
                 />
+              
               </CardContent>
             </Card>
           </Grid>
@@ -536,7 +538,7 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
                       </ListItemIcon>
                       <ListItemText
                         primary="Status"
-                        secondary={turf.isActive ? 'Available' : 'Not Available'}
+                        secondary={turf.status ? 'Available' : 'Not Available'}
                       />
                     </ListItem>
                   </List>
@@ -549,7 +551,7 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
         {/* Slot Booking Component */}
         {bookingDialogOpen && (
           <SlotBooking
-            turfId={id!}
+            turfId={turf.id!}
             onBookingComplete={(booking) => {
               toast.success('Booking created successfully!');
               setBookingDialogOpen(false);

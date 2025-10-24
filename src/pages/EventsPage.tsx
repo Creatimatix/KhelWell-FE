@@ -188,7 +188,7 @@ const EventsPage: React.FC = () => {
             🎯 Want to publish your event?
           </Typography>
           <Typography variant="body1">
-            Contact our helpdesk at <strong>+91 99999 99999</strong> to get your event featured!
+            Contact our helpdesk at <strong>+91 75591 10715</strong> to get your event featured!
           </Typography>
         </Paper>
       )}
@@ -248,7 +248,7 @@ const EventsPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            {/* <Grid item xs={12} md={2}>
+            <Grid item xs={12} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Status</InputLabel>
                 <Select
@@ -264,7 +264,7 @@ const EventsPage: React.FC = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
+         {/*   <Grid item xs={12} md={2}>
               <FormControl fullWidth size="small">
                 <InputLabel>Event Type</InputLabel>
                 <Select
