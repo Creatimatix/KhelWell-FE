@@ -6,7 +6,6 @@ interface ProductImageGalleryProps {
 }
 
 export default function ImageGallery({ images }: ProductImageGalleryProps) {
-  console.log("images:", images)
   const [selectedImage, setSelectedImage] = useState(images[0]?.image_url || 'https://turftown.in/_next/image?url=https%3A%2F%2Fturftown.s3.ap-south-1.amazonaws.com%2Fsuper_admin%2Ftt-1726811620216.webp&w=828&q=75');
 
   return (

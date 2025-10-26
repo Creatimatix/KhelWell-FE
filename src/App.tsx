@@ -20,6 +20,7 @@ import OTPLoginPage from "./pages/OTPLoginPage";
 import AdminEvents from "./pages/admin/AdminEvents";
 import AdminEventCreate from "./pages/admin/AdminEventCreate";
 import AdminEventEdit from "./pages/admin/AdminEventEdit";
+import UserBookings from "./pages/user/UserBookings";
 const App: React.FC = () => {
  
   return (
@@ -36,6 +37,7 @@ const App: React.FC = () => {
             <Route path="/register" element={ <RegisterPage /> } />
             <Route path="/user/profile" element={ <UserProfile /> } />
             <Route path="/user/dashboard" element={ <UserDashboard /> } />
+            <Route path="/user/bookings" element={ <UserBookings /> } />
             <Route path="/owner/dashboard" element={ <OwnerDashboardStatic /> } />
             <Route path="/admin/dashboard" element={ <AdminDashboard /> } />
             <Route path="/admin/events" element={ <AdminEvents /> } />

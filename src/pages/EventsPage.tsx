@@ -73,6 +73,10 @@ interface Event {
     email: string;
     user_name: string;
   };
+  status_info?: {
+    status: string;
+    time_until_start: string;
+  }
 }
 
 const EventsPage: React.FC = () => {
@@ -121,15 +125,14 @@ const EventsPage: React.FC = () => {
     }
   };
 
-  const getStatusColor = (is_active: string) => {
-    // switch (is_active) {
-    //   case 'upcoming': return 'primary';
-    //   case 'ongoing': return 'success';
-    //   case 'completed': return 'info';
-    //   case 'cancelled': return 'error';
-    //   default: return 'default';
-    // }
-    return is_active === 'true' ? 'success' : 'error';
+  const getStatusColor = (status: string | undefined) => {
+    switch (status) {
+      case 'upcoming': return 'primary';
+      case 'ongoing': return 'success';
+      case 'completed': return 'info';
+      case 'cancelled': return 'error';
+      default: return 'default';
+    }
   };
 
   const getEventTypeColor = (type: string) => {
@@ -145,14 +148,14 @@ const EventsPage: React.FC = () => {
 
 
   const filteredEvents = events.filter(event => {
-    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.location.toLowerCase().includes(searchTerm.toLowerCase());
+     const matchesSearch = 
+     (event.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+     (event.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||  
+     (event.location || '').toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesSport = sportFilter === 'all' || event.sports_type === sportFilter;
-    const matchesStatus = statusFilter === 'all' || event.is_active === statusFilter;
+    const matchesStatus = statusFilter === 'all' || event?.status_info?.status === statusFilter;
     const matchesType = eventTypeFilter === 'all' || event.event_type === eventTypeFilter;
-
     return matchesSearch && matchesSport && matchesStatus && matchesType;
   });
 
@@ -353,10 +356,8 @@ const EventsPage: React.FC = () => {
                       WebkitBoxOrient: 'vertical',
                       overflow: 'hidden'
                     }}
-                  >
-                    {!! event.description !!}
-                    <div dangerouslySetInnerHTML={{__html:  event.description}} />
-                  </Typography>
+                    dangerouslySetInnerHTML={{__html: event.description || ''}}
+                  />
 
                   <Box display="flex" gap={1} mb={2}>
                     <Chip
@@ -364,11 +365,11 @@ const EventsPage: React.FC = () => {
                       color={getEventTypeColor(event.event_type) as any}
                       size="small"
                     />
-                    <Chip
-                      label={event.sports_type}
-                      color={getStatusColor(event.sports_type) as any}
-                      size="small"
-                    />
+                      <Chip
+                       label={event?.status_info?.status || 'Unknown'}
+                       color={getStatusColor(event?.status_info?.status) as any}
+                        size="small"
+                      />
                   </Box>
                   <Box display="flex" alignItems="center" mb={1}>
                     <TimeIcon sx={{ mr: 1, fontSize: 16, color: 'text.secondary' }} />

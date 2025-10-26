@@ -10,326 +10,272 @@ import {
   Grid,
   Card,
   CardContent,
-  Chip,
   CircularProgress,
   Alert,
   TextField,
   Stepper,
   Step,
   StepLabel,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Divider,
   IconButton,
-  Tooltip
+  Chip
 } from '@mui/material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format, addDays, isBefore, startOfDay } from 'date-fns';
-import { Close as CloseIcon, Info as InfoIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { Close as CloseIcon } from '@mui/icons-material';
 
-interface Slot {
-  _id: string;
+interface TimeRange {
   startTime: string;
   endTime: string;
-  price: number;
-  isAvailable: boolean;
+  duration: number;
+  totalPrice: number;
 }
 
-interface SelectedSlots {
-  slots: Slot[];
-  totalPrice: number;
-  duration: number;
+interface TimeSlot {
   startTime: string;
   endTime: string;
+  isAvailable: boolean;
+  isBooked: boolean;
+  value: number;
 }
 
 interface Turf {
+  id: string;
   name: string;
-  hourlyRate: number;
-  operatingHours: {
-    openTime: string;
-    closeTime: string;
-  };
+  price: number;
+  description: string;
+  sportType: string;
 }
 
 interface SlotBookingProps {
-  turfId: string;
   onBookingComplete?: (booking: any) => void;
   onClose?: () => void;
 }
 
-const SlotBooking: React.FC<SlotBookingProps> = ({ turfId, onBookingComplete, onClose }) => {
-  // Add CSS animation for pulse effect
-  React.useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.5; }
-        100% { opacity: 1; }
-      }
-    `;
-    document.head.appendChild(style);
-    return () => {
-      if (document.head.contains(style)) {
-        document.head.removeChild(style);
-      }
-    };
-  }, []);
+const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose }) => {
+  // Static turf data - multiple turfs for selection
+  const availableTurfs: Turf[] = [
+    {
+      id: "turf1",
+      name: "Premium Football Ground",
+      price: 1200,
+      description: "Full-size football field with professional quality turf",
+      sportType: "football"
+    },
+    {
+      id: "turf2", 
+      name: "Cricket Pitch",
+      price: 1000,
+      description: "Cricket pitch with proper dimensions and facilities",
+      sportType: "cricket"
+    },
+    {
+      id: "turf3",
+      name: "Tennis Court",
+      price: 800,
+      description: "Professional tennis court with lighting",
+      sportType: "tennis"
+    },
+    {
+      id: "turf4",
+      name: "Basketball Court",
+      price: 600,
+      description: "Indoor basketball court with air conditioning",
+      sportType: "basketball"
+    },
+    {
+      id: "turf5",
+      name: "Badminton Court",
+      price: 500,
+      description: "Professional badminton court with proper flooring",
+      sportType: "badminton"
+    },
+    {
+      id: "turf6",
+      name: "Volleyball Court",
+      price: 700,
+      description: "Beach volleyball court with sand surface",
+      sportType: "volleyball"
+    },
+    {
+      id: "turf7",
+      name: "Multi-Sport Ground",
+      price: 900,
+      description: "Versatile ground for multiple sports",
+      sportType: "multi-sport"
+    },
+    {
+      id: "turf8",
+      name: "Training Ground",
+      price: 400,
+      description: "Basic training ground for practice sessions",
+      sportType: "general"
+    }
+  ];
+
   const [selectedDate, setSelectedDate] = useState<Date | null>(addDays(new Date(), 1));
-  const [selectedSlots, setSelectedSlots] = useState<SelectedSlots | null>(null);
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [turf, setTurf] = useState<Turf | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [selectedTurf, setSelectedTurf] = useState<Turf | null>(null);
+  const [timeRanges, setTimeRanges] = useState<TimeRange[]>([]);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  const [selectedSlots, setSelectedSlots] = useState<number[]>([]);
+  const [lastSelectedSlot, setLastSelectedSlot] = useState<number | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [specialRequests, setSpecialRequests] = useState('');
   const [activeStep, setActiveStep] = useState(0);
-  const [selectionMode, setSelectionMode] = useState<'single' | 'range'>('single');
-  const [rangeStart, setRangeStart] = useState<Slot | null>(null);
-  const [maxSlots, setMaxSlots] = useState(4);
-  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
-  const steps = ['Select Date & Time', 'Booking Details', 'Confirmation'];
+  const steps = ['Select Turf & Date', 'Select Time Range', 'Booking Details', 'Confirmation'];
 
-  useEffect(() => {
-    if (selectedDate) {
-      fetchSlots();
-    }
-  }, [selectedDate, turfId]);
-
-  // Set up periodic refresh of slots to check availability
-  useEffect(() => {
-    if (selectedDate && activeStep === 0) {
-      // Refresh slots every 10 seconds when on the slot selection step
-      const interval = setInterval(() => {
-        fetchSlots();
-      }, 10000);
-      
-      setRefreshInterval(interval);
-      
-      return () => {
-        if (interval) clearInterval(interval);
-      };
-    } else {
-      // Clear interval when not on slot selection step
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-        setRefreshInterval(null);
-      }
-    }
-  }, [selectedDate, activeStep]);
-
-  // Cleanup interval on component unmount
-  useEffect(() => {
-    return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-      }
-    };
-  }, [refreshInterval]);
-
-  const fetchSlots = async () => {
-    if (!selectedDate) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      const response = await fetch(`http://localhost:5001/api/slots/turf/${turfId}?date=${dateStr}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch slots');
-      }
-
-      const data = await response.json();
-      setSlots(data.data);
-      setTurf(data.turf);
-    } catch (err) {
-      setError('Failed to load available slots');
-      console.error('Fetch slots error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSlotClick = (slot: Slot) => {
-    if (!slot.isAvailable) return;
-
-    if (selectionMode === 'single') {
-      // Single slot selection
-      const totalPrice = Number(slot.price);
-      setSelectedSlots({
-        slots: [slot],
-        totalPrice,
-        duration: 1,
-        startTime: slot.startTime,
-        endTime: slot.endTime
-      });
-      setActiveStep(1);
-    } else {
-      // Range selection
-      if (!rangeStart) {
-        // First click - set start of range
-        setRangeStart(slot);
-      } else {
-        // Second click - set end of range
-        const startIndex = slots.findIndex(s => s._id === rangeStart._id);
-        const endIndex = slots.findIndex(s => s._id === slot._id);
-        
-        if (startIndex === -1 || endIndex === -1) return;
-        
-        const startIdx = Math.min(startIndex, endIndex);
-        const endIdx = Math.max(startIndex, endIndex);
-        
-        // Get all slots in the range and validate availability
-        const rangeSlots: Slot[] = [];
-        const unavailableSlots: Slot[] = [];
-        
-        for (let i = startIdx; i <= endIdx; i++) {
-          const currentSlot = slots[i];
-          if (currentSlot.isAvailable) {
-            rangeSlots.push(currentSlot);
-          } else {
-            unavailableSlots.push(currentSlot);
-          }
-        }
-        
-        // If any slots are unavailable, show error and reset
-        if (unavailableSlots.length > 0) {
-          setError(`Some slots in the selected range are no longer available: ${unavailableSlots.map(s => `${s.startTime}-${s.endTime}`).join(', ')}`);
-          setRangeStart(null);
-          return;
-        }
-        
-        // Check if slots are consecutive
-        let isConsecutive = true;
-        for (let i = 1; i < rangeSlots.length; i++) {
-          if (rangeSlots[i-1].endTime !== rangeSlots[i].startTime) {
-            isConsecutive = false;
-            break;
-          }
-        }
-        
-        if (!isConsecutive) {
-          setError('Selected slots must be consecutive');
-          setRangeStart(null);
-          return;
-        }
-        
-        if (rangeSlots.length > maxSlots) {
-          setError(`Maximum ${maxSlots} slots can be booked at once`);
-          setRangeStart(null);
-          return;
-        }
-        
-        const totalPrice = rangeSlots.reduce((sum, s) => sum + Number(s.price), 0);
-        setSelectedSlots({
-          slots: rangeSlots,
-          totalPrice,
-          duration: rangeSlots.length,
-          startTime: rangeSlots[0].startTime,
-          endTime: rangeSlots[rangeSlots.length - 1].endTime
-        });
-        setRangeStart(null);
-        setError(null); // Clear any previous errors
-        setActiveStep(1);
-      }
-    }
-  };
-
-  const isSlotInRange = (slot: Slot) => {
-    if (!rangeStart) return false;
-    const startIndex = slots.findIndex(s => s._id === rangeStart._id);
-    const currentIndex = slots.findIndex(s => s._id === slot._id);
-    if (startIndex === -1 || currentIndex === -1) return false;
+  // Generate time slots (30-minute intervals for 24 hours) - matching the provided logic
+  const generateTimeSlots = (): TimeSlot[] => {
+    const slots: TimeSlot[] = [];
     
-    const startIdx = Math.min(startIndex, currentIndex);
-    const endIdx = Math.max(startIndex, currentIndex);
-    return currentIndex >= startIdx && currentIndex <= endIdx;
+    for (let hour = 0; hour < 24; hour++) {
+      // First slot: hour:00 - hour:30
+      const startTime1 = `${hour.toString().padStart(2, '0')}:00`;
+      const endTime1 = `${hour.toString().padStart(2, '0')}:30`;
+      
+      // Second slot: hour:30 - (hour+1):00
+      const nextHour = (hour + 1) % 24;
+      const startTime2 = `${hour.toString().padStart(2, '0')}:30`;
+      const endTime2 = `${nextHour.toString().padStart(2, '0')}:00`;
+      
+      // Simulate some booked slots (for demo purposes)
+      const isBooked1 = Math.random() < 0.15; // 15% chance of being booked
+      const isBooked2 = Math.random() < 0.15; // 15% chance of being booked
+      
+      slots.push({
+        startTime: startTime1,
+        endTime: endTime1,
+        isAvailable: !isBooked1,
+        isBooked: isBooked1,
+        value: hour * 2 // Matching the provided logic
+      });
+      
+      slots.push({
+        startTime: startTime2,
+        endTime: endTime2,
+        isAvailable: !isBooked2,
+        isBooked: isBooked2,
+        value: hour * 2 + 1 // Matching the provided logic
+      });
+    }
+    
+    return slots;
   };
 
-  const isSlotSelected = (slot: Slot) => {
-    return selectedSlots?.slots.some(s => s._id === slot._id) || false;
-  };
+  // Load time slots when turf and date are selected
+  useEffect(() => {
+    if (selectedTurf && selectedDate) {
+      const slots = generateTimeSlots();
+      setTimeSlots(slots);
+      setSelectedSlots([]);
+      setLastSelectedSlot(null);
+      setTimeRanges([]);
+    }
+  }, [selectedTurf, selectedDate]);
 
-  const validateSlotsBeforeBooking = async () => {
-    if (!selectedSlots || !selectedDate) return false;
+  // Reset selection when turf changes
+  useEffect(() => {
+    setTimeRanges([]);
+    setSelectedSlots([]);
+    setLastSelectedSlot(null);
+    setActiveStep(0);
+  }, [selectedTurf]);
 
-    try {
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      const response = await fetch(`http://localhost:5001/api/slots/turf/${turfId}?date=${dateStr}`);
+  const handleTimeSlotClick = (slot: TimeSlot) => {
+    if (!selectedTurf) return;
+    
+    if (slot.isBooked) {
+      setError('This time slot is already booked');
+      return;
+    }
+    
+    // If no slots selected, start with this slot
+    if (selectedSlots.length === 0) {
+      setSelectedSlots([slot.value]);
+      setLastSelectedSlot(slot.value);
+      setError(null);
+      return;
+    }
+    
+    const firstSelectedSlot = selectedSlots[0];
+    const lastSelectedSlotValue = selectedSlots[selectedSlots.length - 1];
+    
+    // If clicking on the same slot as last selected, deselect it
+    if (slot.value === lastSelectedSlotValue && selectedSlots.length === 1) {
+      setSelectedSlots([]);
+      setLastSelectedSlot(null);
+      setTimeRanges([]);
+      setError(null);
+      return;
+    }
+    
+    // If clicking on the next consecutive slot, add it to selection
+    if (slot.value === lastSelectedSlotValue + 1) {
+      const newSelectedSlots = [...selectedSlots, slot.value];
+      setSelectedSlots(newSelectedSlots);
+      setLastSelectedSlot(slot.value);
       
-      if (!response.ok) {
-        throw new Error('Failed to validate slots');
+      // Create time range from first to last selected slot
+      const firstSlot = timeSlots.find(s => s.value === firstSelectedSlot);
+      const lastSlot = timeSlots.find(s => s.value === slot.value);
+      
+      if (firstSlot && lastSlot) {
+        const duration = (selectedSlots.length + 1) * 0.5; // Each slot is 30 minutes
+        const totalPrice = selectedTurf.price * duration;
+        
+        const newRange: TimeRange = {
+          startTime: firstSlot.startTime,
+          endTime: lastSlot.endTime,
+          duration,
+          totalPrice
+        };
+        
+        setTimeRanges([newRange]);
       }
-
-      const data = await response.json();
-      const currentSlots = data.data;
       
-      // Check if all selected slots are still available
-      for (const selectedSlot of selectedSlots.slots) {
-        const currentSlot = currentSlots.find((s: Slot) => s._id === selectedSlot._id);
-        if (!currentSlot || !currentSlot.isAvailable) {
-          return false;
-        }
-      }
-      
-      return true;
-    } catch (err) {
-      console.error('Slot validation error:', err);
-      return false;
+      setError(null);
+    } else {
+      // If not consecutive, start new selection with this slot
+      setSelectedSlots([slot.value]);
+      setLastSelectedSlot(slot.value);
+      setTimeRanges([]);
+      setError(null);
     }
   };
+
 
   const handleBooking = async () => {
-    if (!selectedSlots || !selectedDate) return;
+    if (timeRanges.length === 0 || !selectedDate || !selectedTurf) return;
 
     setBookingLoading(true);
     setError(null);
 
     try {
-      // Validate slots before booking
-      const slotsValid = await validateSlotsBeforeBooking();
-      if (!slotsValid) {
-        setError('Some selected slots are no longer available. Please refresh and try again.');
-        setActiveStep(0); // Go back to slot selection
-        return;
-      }
-
-      const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      const response = await fetch('http://localhost:5001/api/slots/book', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          turfId: parseInt(turfId),
-          date: dateStr,
-          startTime: selectedSlots.startTime,
-          endTime: selectedSlots.endTime,
-          specialRequests: specialRequests.trim() || '',
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Booking error response:', errorData);
-        throw new Error(errorData.message || errorData.errors?.[0]?.msg || 'Booking failed');
-      }
-
-      const data = await response.json();
-      setSuccess('Booking created successfully!');
-      setActiveStep(2);
+      // Simulate booking process with static data
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
       
+      const bookingData = {
+        id: `booking-${Date.now()}`,
+        turfId: selectedTurf.id,
+        turfName: selectedTurf.name,
+        sportType: selectedTurf.sportType,
+        date: format(selectedDate, 'yyyy-MM-dd'),
+        startTime: timeRanges[0].startTime,
+        endTime: timeRanges[0].endTime,
+        duration: timeRanges[0].duration,
+        totalPrice: timeRanges[0].totalPrice,
+        specialRequests: specialRequests.trim() || '',
+        status: 'confirmed'
+      };
+
+      setActiveStep(3);
+
+      console.log("bookingData", bookingData);
+
       if (onBookingComplete) {
-        onBookingComplete(data.booking);
+        onBookingComplete(bookingData);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create booking');
@@ -345,14 +291,13 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ turfId, onBookingComplete, on
   };
 
   const resetSelection = () => {
-    setSelectedSlots(null);
-    setRangeStart(null);
-    setActiveStep(0);
+    setTimeRanges([]);
+    setSelectedSlots([]);
+    setLastSelectedSlot(null);
+    setActiveStep(1);
   };
 
-  const formatTime = (time: string) => {
-    return time.slice(0, 5);
-  };
+
 
   const formatPrice = (price: number) => {
     return `₹${price}`;
@@ -362,29 +307,53 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ turfId, onBookingComplete, on
     return isBefore(date, startOfDay(new Date()));
   };
 
-  const getSlotColor = (slot: Slot) => {
-    if (!slot.isAvailable) return 'error';
-    if (isSlotSelected(slot)) return 'primary';
-    if (isSlotInRange(slot)) return 'warning';
-    return 'default';
-  };
-
-  const getSlotVariant = (slot: Slot) => {
-    if (!slot.isAvailable) return 'outlined';
-    if (isSlotSelected(slot)) return 'filled';
-    if (isSlotInRange(slot)) return 'outlined';
-    return 'outlined';
-  };
-
   const renderStepContent = (step: number) => {
     switch (step) {
       case 0:
         return (
           <Box>
             <Typography variant="h6" gutterBottom>
-              Select Date & Time
+              Select Turf & Date
             </Typography>
             
+            <Box mb={3}>
+              <Typography variant="subtitle1" gutterBottom>
+                Choose a turf:
+              </Typography>
+              <Grid container spacing={2}>
+                {availableTurfs.map((turf) => (
+                  <Grid item xs={6} sm={3} key={turf.id}>
+                    <Card 
+                      sx={{ 
+                        cursor: 'pointer',
+                        border: selectedTurf?.id === turf.id ? 2 : 1,
+                        borderColor: selectedTurf?.id === turf.id ? 'primary.main' : 'divider',
+                        '&:hover': { boxShadow: 2 },
+                        transition: 'all 0.2s ease-in-out',
+                        height: '100%'
+                      }}
+                      onClick={() => setSelectedTurf(turf)}
+                    >
+                      <CardContent sx={{ p: 2, textAlign: 'center' }}>
+                        <Typography variant="h6" sx={{ fontSize: '1rem', mb: 1 }}>
+                          {turf.name}
+                        </Typography>
+                        <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold', mb: 1 }}>
+                          {formatPrice(turf.price)}/hour
+                        </Typography>
+                        <Chip 
+                          label={turf.sportType} 
+                          size="small" 
+                          color="secondary"
+                          sx={{ fontSize: '0.7rem' }}
+                        />
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+
             <LocalizationProvider dateAdapter={AdapterDateFns}>
               <DatePicker
                 label="Select Date"
@@ -403,131 +372,6 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ turfId, onBookingComplete, on
                 }}
               />
             </LocalizationProvider>
-
-            {selectedDate && (
-              <Box mt={3}>
-                <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <Typography variant="subtitle1">
-                      Available Slots for {format(selectedDate, 'MMM dd, yyyy')}
-                    </Typography>
-                    <IconButton 
-                      size="small" 
-                      onClick={fetchSlots}
-                      disabled={loading}
-                      title="Refresh slots"
-                    >
-                      <RefreshIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                  <FormControl size="small" sx={{ minWidth: 120 }}>
-                    <InputLabel>Selection Mode</InputLabel>
-                    <Select
-                      value={selectionMode}
-                      label="Selection Mode"
-                      onChange={(e) => {
-                        setSelectionMode(e.target.value as 'single' | 'range');
-                        resetSelection();
-                      }}
-                    >
-                      <MenuItem value="single">Single Slot</MenuItem>
-                      <MenuItem value="range">Range Selection</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-
-                {selectionMode === 'range' && (
-                  <Alert severity="info" sx={{ mb: 2 }}>
-                    <Typography variant="body2">
-                      Click on the first slot to start your range, then click on the last slot to complete your selection.
-                      Maximum {maxSlots} consecutive slots allowed.
-                    </Typography>
-                  </Alert>
-                )}
-
-                <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
-                  <Typography variant="caption" color="text.secondary">
-                    Slots refresh automatically every 10 seconds
-                  </Typography>
-                  {refreshInterval && (
-                    <Box display="flex" alignItems="center" gap={0.5}>
-                      <Box
-                        sx={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          backgroundColor: 'success.main',
-                          animation: 'pulse 2s infinite'
-                        }}
-                      />
-                      <Typography variant="caption" color="text.secondary">
-                        Live
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-
-                {rangeStart && (
-                  <Alert severity="warning" sx={{ mb: 2 }}>
-                    <Typography variant="body2">
-                      Range started at {formatTime(rangeStart.startTime)}. Click on another slot to complete your range.
-                    </Typography>
-                  </Alert>
-                )}
-
-                {loading ? (
-                  <Box display="flex" justifyContent="center" mt={3}>
-                    <CircularProgress />
-                  </Box>
-                ) : error ? (
-                  <Alert severity="error" sx={{ mt: 2 }} action={
-                    <Button color="inherit" size="small" onClick={() => setError(null)}>
-                      Dismiss
-                    </Button>
-                  }>
-                    {error}
-                  </Alert>
-                ) : slots.length > 0 ? (
-                  <Grid container spacing={2}>
-                    {slots.map((slot) => (
-                      <Grid item xs={12} sm={6} md={4} key={slot._id}>
-                        <Card 
-                          sx={{ 
-                            cursor: slot.isAvailable ? 'pointer' : 'not-allowed',
-                            '&:hover': slot.isAvailable ? { boxShadow: 3 } : {},
-                            border: 2,
-                            borderColor: getSlotColor(slot) === 'default' ? 'divider' : `${getSlotColor(slot)}.main`,
-                            opacity: slot.isAvailable ? 1 : 0.6,
-                            transition: 'all 0.2s ease-in-out'
-                          }}
-                          onClick={() => handleSlotClick(slot)}
-                        >
-                          <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                            <Typography variant="h6" color={getSlotColor(slot)}>
-                              {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                              {formatPrice(slot.price)}
-                            </Typography>
-                            <Chip 
-                              label={slot.isAvailable ? 'Available' : 'Booked'} 
-                              color={getSlotColor(slot)}
-                              variant={getSlotVariant(slot)}
-                              size="small" 
-                              sx={{ mt: 1, width: '100%' }}
-                            />
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    ))}
-                  </Grid>
-                ) : (
-                  <Alert severity="info">
-                    No available slots for this date.
-                  </Alert>
-                )}
-              </Box>
-            )}
           </Box>
         );
 
@@ -535,29 +379,164 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ turfId, onBookingComplete, on
         return (
           <Box>
             <Typography variant="h6" gutterBottom>
+              Select Time Range
+            </Typography>
+            
+            {selectedDate && selectedTurf && (
+              <Box mt={3}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Select time range for {format(selectedDate, 'MMM dd, yyyy')} - {selectedTurf.name}
+                </Typography>
+                
+                {error && (
+                  <Alert severity="error" sx={{ mb: 2 }} action={
+                    <Button color="inherit" size="small" onClick={() => setError(null)}>
+                      Dismiss
+                    </Button>
+                  }>
+                    {error}
+                  </Alert>
+                )}
+
+                {selectedSlots.length > 0 && (
+                  <Card sx={{ border: 2, borderColor: 'primary.main', mb: 2 }}>
+                    <CardContent>
+                      <Typography variant="h6" color="primary">
+                        {selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''} selected
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Click on consecutive slots to extend your selection, or click the same slot to deselect
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {timeSlots.length > 0 ? (
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Available time slots (30-minute intervals) - Click to select consecutive slots
+                    </Typography>
+                    <Grid container spacing={0.5}>
+                      {timeSlots.map((slot, index) => {
+                        const isSelected = selectedSlots.includes(slot.value);
+                        const isBooked = slot.isBooked;
+                        
+                        return (
+                          <Grid item xs={3} sm={2.4} md={2} lg={1.5} key={index}>
+                            <Card 
+                              sx={{
+                                cursor: slot.isAvailable ? 'pointer' : 'not-allowed',
+                                '&:hover': slot.isAvailable ? { boxShadow: 2 } : {},
+                                border: 1,
+                                borderColor: isBooked
+                                  ? 'error.main'
+                                  : isSelected
+                                  ? 'success.main'
+                                  : 'divider',
+                                backgroundColor: isBooked
+                                  ? '#fdecea'        // light red for booked
+                                  : isSelected
+                                  ? '#'        // solid green for selected
+                                  : 'background.paper',
+                                color: isBooked
+                                  ? '#b71c1c'        // dark red text
+                                  : isSelected
+                                  ? '#fff'            // white text when selected
+                                  : 'text.primary',   // default text color
+                                opacity: slot.isAvailable ? 1 : 0.6,
+                                transition: 'all 0.2s ease-in-out',
+                                minHeight: 50,
+                                maxHeight: 60,
+                                borderRadius: 1,
+                              }}                              
+                              onClick={() => handleTimeSlotClick(slot)}
+                            >
+                              <CardContent sx={{ textAlign: 'center', py: 0.5, px: 0.5 }}>
+                                <Typography variant="caption" sx={{ 
+                                  fontSize: '0.6rem', 
+                                  lineHeight: 1.2, 
+                                  display: 'block',
+                                  color: isBooked ? 'error.main' : isSelected ? 'primary.main' : 'text.primary'
+                                }}>
+                                  {format(new Date(`2000-01-01T${slot.startTime}`), 'h:mm a')}
+                                </Typography>
+                                <Typography variant="caption" sx={{ 
+                                  fontSize: '0.5rem', 
+                                  lineHeight: 1, 
+                                  display: 'block',
+                                  color: isBooked ? 'error.main' : isSelected ? 'primary.main' : 'text.secondary'
+                                }}>
+                                  to
+                                </Typography>
+                                <Typography variant="caption" sx={{ 
+                                  fontSize: '0.6rem', 
+                                  lineHeight: 1.2, 
+                                  display: 'block',
+                                  color: isBooked ? 'error.main' : isSelected ? 'primary.main' : 'text.primary'
+                                }}>
+                                  {format(new Date(`2000-01-01T${slot.endTime}`), 'h:mm a')}
+                                </Typography>
+                                <Box sx={{ mt: 0.2 }}>
+                                  <Chip 
+                                    label={isBooked ? '✗' : isSelected ? '✓' : '○'} 
+                                    color={isBooked ? 'error' : isSelected ? 'primary' : 'default'}
+                                    variant={isSelected ? 'filled' : 'outlined'}
+                                    size="small" 
+                                    sx={{ minWidth: 16, height: 12, fontSize: '0.5rem' }}
+                                  />
+                                </Box>
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        );
+                      })}
+                    </Grid>
+                  </Box>
+                ) : (
+                  <Alert severity="info">
+                    No available time slots for this date.
+                  </Alert>
+                )}
+
+
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  <Typography variant="body2">
+                    <strong>How to book:</strong> Click on consecutive time slots to select your range. For example, click "6:00 PM - 6:30 PM", then "6:30 PM - 7:00 PM", then "7:00 PM - 7:30 PM" to book 1.5 hours. Click the same slot again to deselect it.
+                  </Typography>
+                </Alert>
+              </Box>
+            )}
+          </Box>
+        );
+
+      case 2:
+        return (
+          <Box>
+            <Typography variant="h6" gutterBottom>
               Booking Details
             </Typography>
             
-            {selectedSlots && (
+            {timeRanges.length > 0 && selectedTurf && (
               <Box mb={3}>
                 <Typography variant="subtitle1" gutterBottom>
-                  Selected Slots ({selectedSlots.slots.length} hour{selectedSlots.slots.length > 1 ? 's' : ''})
+                  Booking Summary
                 </Typography>
                 <Card sx={{ border: 2, borderColor: 'primary.main' }}>
                   <CardContent>
                     <Typography variant="h6" color="primary">
-                      {formatTime(selectedSlots.startTime)} - {formatTime(selectedSlots.endTime)}
+                      {selectedTurf.name}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {selectedDate && format(selectedDate, 'MMM dd, yyyy')}
                     </Typography>
-                    <Typography variant="h5" color="primary" sx={{ mt: 1, fontWeight: 'bold' }}>
-                      Total: {formatPrice(selectedSlots.totalPrice)}
+                    <Typography variant="body2" color="text.secondary">
+                      Time: {format(new Date(`2000-01-01T${timeRanges[0].startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${timeRanges[0].endTime}`), 'h:mm a')}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      {selectedSlots.slots.map(slot => 
-                        `${formatTime(slot.startTime)}-${formatTime(slot.endTime)}`
-                      ).join(', ')}
+                    <Typography variant="body2" color="text.secondary">
+                      Duration: {timeRanges[0].duration} hours
+                    </Typography>
+                    <Typography variant="h5" color="primary" sx={{ mt: 1, fontWeight: 'bold' }}>
+                      Total: {formatPrice(timeRanges[0].totalPrice)}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -583,7 +562,7 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ turfId, onBookingComplete, on
           </Box>
         );
 
-      case 2:
+      case 3:
         return (
           <Box>
             <Typography variant="h6" gutterBottom>
@@ -607,13 +586,16 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ turfId, onBookingComplete, on
                     • Date: {selectedDate && format(selectedDate, 'MMM dd, yyyy')}
                   </Typography>
                   <Typography variant="body2">
-                    • Time: {selectedSlots && `${formatTime(selectedSlots.startTime)} - ${formatTime(selectedSlots.endTime)}`}
+                    • Time: {timeRanges[0] && `${format(new Date(`2000-01-01T${timeRanges[0].startTime}`), 'h:mm a')} - ${format(new Date(`2000-01-01T${timeRanges[0].endTime}`), 'h:mm a')}`}
                   </Typography>
                   <Typography variant="body2">
-                    • Duration: {selectedSlots?.duration || 1} hour{(selectedSlots?.duration || 1) > 1 ? 's' : ''}
+                    • Turf: {selectedTurf?.name}
                   </Typography>
                   <Typography variant="body2">
-                    • Total Amount: {selectedSlots && formatPrice(selectedSlots.totalPrice)}
+                    • Duration: {timeRanges[0]?.duration || 0} hours
+                  </Typography>
+                  <Typography variant="body2">
+                    • Total Amount: {formatPrice(timeRanges[0]?.totalPrice || 0)}
                   </Typography>
                   {specialRequests && (
                     <Typography variant="body2">
@@ -664,38 +646,73 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ turfId, onBookingComplete, on
         {renderStepContent(activeStep)}
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3 }}>
-        {activeStep > 0 && activeStep < 2 && (
-          <Button onClick={() => setActiveStep(activeStep - 1)}>
-            Back
-          </Button>
-        )}
+      <DialogActions sx={{ px: 3, pb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {timeRanges.length > 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <Typography variant="body2" color="success.dark" sx={{ fontWeight: 'bold' }}>
+                ✅ Time Range Selected
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {timeRanges[0] && (
+                  <>
+                    {format(new Date(`2000-01-01T${timeRanges[0].startTime}`), 'h:mm a')} - {format(new Date(`2000-01-01T${timeRanges[0].endTime}`), 'h:mm a')}
+                  </>
+                )}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Duration: {timeRanges[0]?.duration || 0} hours
+              </Typography>
+              <Typography variant="h6" color="success.dark" sx={{ fontWeight: 'bold' }}>
+                Total: {formatPrice(timeRanges[0]?.totalPrice || 0)}
+              </Typography>
+            </Box>
+          )}
+        </Box>
         
-        {activeStep === 0 && selectedSlots && (
-          <Button 
-            variant="contained" 
-            onClick={() => setActiveStep(1)}
-            disabled={!selectedSlots}
-          >
-            Continue
-          </Button>
-        )}
-        
-        {activeStep === 1 && (
-          <Button 
-            variant="contained" 
-            onClick={handleBooking}
-            disabled={bookingLoading || !selectedSlots}
-          >
-            {bookingLoading ? <CircularProgress size={20} /> : 'Confirm Booking'}
-          </Button>
-        )}
-        
-        {activeStep === 2 && (
-          <Button variant="contained" onClick={handleClose}>
-            Close
-          </Button>
-        )}
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {activeStep > 0 && activeStep < 3 && (
+            <Button onClick={() => setActiveStep(activeStep - 1)}>
+              Back
+            </Button>
+          )}
+          
+          {activeStep === 0 && selectedDate && selectedTurf && (
+            <Button 
+              variant="contained" 
+              onClick={() => setActiveStep(1)}
+              disabled={!selectedDate || !selectedTurf}
+            >
+              Continue
+            </Button>
+          )}
+          
+          {activeStep === 1 && timeRanges.length > 0 && (
+            <Button 
+              variant="contained" 
+              onClick={() => setActiveStep(2)}
+              disabled={timeRanges.length === 0}
+            >
+              Continue
+            </Button>
+          )}
+          
+          {activeStep === 2 && (
+            <Button 
+              variant="contained" 
+              onClick={handleBooking}
+              disabled={bookingLoading || timeRanges.length === 0}
+            >
+              {bookingLoading ? <CircularProgress size={20} /> : 'Confirm Booking'}
+            </Button>
+          )}
+          
+          {activeStep === 3 && (
+            <Button variant="contained" onClick={handleClose}>
+              Close
+            </Button>
+          )}
+        </Box>
       </DialogActions>
     </Dialog>
   );

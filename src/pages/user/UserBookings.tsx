@@ -40,6 +40,7 @@ import {
   AttachMoney as MoneyIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
+import { BACKEND_API_URL } from '../../utils/constant';
 
 interface Booking {
   id: number;
@@ -78,13 +79,13 @@ const UserBookings: React.FC = () => {
 
   const fetchBookings = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       if (!token) {
         setError('No authentication token found');
         return;
       }
 
-      const response = await fetch('http://localhost:5001/api/slots/my-bookings', {
+      const response = await fetch(BACKEND_API_URL+'slots/my-bookings', {
         headers: {
           'Authorization': `Bearer ${token}`
         }

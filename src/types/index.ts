@@ -17,49 +17,47 @@ export interface User {
   updatedAt: string;
 }
 
+export interface Sport {
+  id: number;
+  id_turf: number;
+  id_sport: number;
+  name: string;
+  rate_per_hour: number;
+  dimensions: string;
+  capacity: number;
+  rules: string;
+  status: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Turf {
-  id: string;
+  id: number;
   name: string;
   slug: string;
-  owner: User;
-  description: string;
-  sportType: 'football' | 'cricket' | 'tennis' | 'basketball' | 'badminton' | 'volleyball' | 'multi-sport';
-  location: {
-    address: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    coordinates?: {
-      lat: number;
-      lng: number;
-    };
-  };
-  images: string[];
-  amenities: string[];
-  size?: {
-    length: number;
-    width: number;
-    unit: 'meters' | 'feet';
-  };
-  surface: 'natural_grass' | 'artificial_grass' | 'clay' | 'hard_court' | 'synthetic';
-  slots?: Slot[];
-  pricing: {
-    hourlyRate: number;
-    currency: string;
-  };
-  operatingHours?: {
-    openTime: string;
-    closeTime: string;
-    daysOpen: string[];
-  };
+  location: string;
+  address: string;
   rating: {
     average: number;
     count: number;
   };
-  isActive: boolean;
-  isVerified: boolean;
-  createdAt: string;
-  updatedAt: string;
+  timing: string;
+  pricing: any;
+  latitude: string;
+  longitude: string;
+  status: number;
+  features: string;
+  benefits: string;
+  description: string;
+  rules: string;
+  created_at: string;
+  updated_at: string;
+  min_price: number;
+  sports: Sport[];
+  images: any[];
+  approved_reviews: any[];
+  rate_per_hour: number;
+  sportType: string;
 }
 
 export interface Slot {
@@ -126,6 +124,10 @@ export interface Event {
   isOngoing?: boolean;
   isUpcoming?: boolean;
   event_start_date: string;
+  status_info?: {
+    status: string;
+    time_until_start: string;
+  }
 }
 
 export interface AuthContextType {

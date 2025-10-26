@@ -171,8 +171,6 @@ const TurfDetailPage: React.FC = () => {
     );
   }
 
-
-
   interface CustomTabPanelProps {
     children?: React.ReactNode;
     value: number;
@@ -214,8 +212,6 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
       setSelectedSportPrice(price)
   }
 
-  console.log("selectedSport:", selectedSport);
-  
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         {/* Header */}
@@ -496,7 +492,7 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
                         }
                     </div>
                 </div>
-                {/* <Button
+               <Button
                   fullWidth
                   variant="contained"
                   size="large"
@@ -504,7 +500,7 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
                   sx={{ mt: 2, mb: 2 }}
                 >
                   Book Now
-                </Button> */}
+                </Button>
 
                 {user && (
                   <Button
@@ -551,7 +547,7 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
         {/* Slot Booking Component */}
         {bookingDialogOpen && (
           <SlotBooking
-            turfId={turf.id!}
+            // turfInfo={turf}
             onBookingComplete={(booking) => {
               toast.success('Booking created successfully!');
               setBookingDialogOpen(false);

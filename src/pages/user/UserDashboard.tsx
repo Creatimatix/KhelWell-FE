@@ -141,7 +141,7 @@ const UserDashboard: React.FC = () => {
       const turfsData = await turfsResponse.json();
     
       // Fetch events
-      const eventsResponse = await fetch(BACKEND_API_URL+'events', {
+      const eventsResponse = await fetch(BACKEND_API_URL+'events/upcoming', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': `application/json`
@@ -158,10 +158,10 @@ const UserDashboard: React.FC = () => {
       // });
       // const dashboardData = await dashboardResponse.json();
 
-      console.log("turfsData:", turfsData.turfs)
+      console.log("eventsData:", eventsData)
       
       setNearbyTurfs(turfsData.turfs || []);
-      setEvents(eventsData.events.data || []);
+      setEvents(eventsData.data.data || []);
       // setRecentBookings(dashboardData.recentBookings || []);
       // setStatistics({
       //   totalBookings: dashboardData.statistics?.totalBookings || 0,
