@@ -81,6 +81,36 @@ export interface SlotBookingResponse {
   };
 }
 
+export interface BookedSlot {
+  id: number;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  sport: {
+    id: number;
+    name: string;
+    type: string;
+  };
+  date: string;
+  start_time: string;
+  end_time: string;
+  duration: string;
+  start_slot_value: number;
+  end_slot_value: number;
+  total_price: string;
+  status: string;
+  status_text: string;
+  special_requests: string;
+  created_at: string;
+}
+
+export interface BookedSlotsResponse {
+  success: boolean;
+  data: BookedSlot[];
+}
+
 export const bookingService = {
   async createBooking(bookingData: CreateBookingData): Promise<Booking> {
     const response = await api.post<Booking>('/bookings', bookingData);
@@ -124,5 +154,41 @@ export const bookingService = {
   async updateBookingStatus(id: string, status: string): Promise<Booking> {
     const response = await api.put<Booking>(`/bookings/${id}/status`, { status });
     return response.data;
+  },
+
+  async getBookedSlots(turfId: number, sportId: number, date: string): Promise<number[]> {
+    try {
+      console.log("turfId", turfId);
+      console.log("sportId", sportId);
+      console.log("date", date);
+      
+      const response = await api.post<BookedSlotsResponse>(
+        `${BACKEND_API_URL}slot-bookings/turf/${turfId}`,
+        { sport_id: sportId, date },
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+          },
+        }
+      );
+
+      console.log("response", response);
+
+      if (response.data.success && response.data.data) {
+        // Extract all slot values from the booked slots
+        const bookedSlots: number[] = [];
+        response.data.data.forEach((booking) => {
+          // Add all slot values from start_slot_value to end_slot_value (inclusive)
+          for (let i = booking.start_slot_value; i <= booking.end_slot_value; i++) {
+            bookedSlots.push(i);
+          }
+        });
+        return bookedSlots;
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching booked slots:', error);
+      return [];
+    }
   },
 }; 

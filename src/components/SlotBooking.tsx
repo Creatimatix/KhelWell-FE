@@ -27,6 +27,7 @@ import { Close as CloseIcon, SportsSoccer } from '@mui/icons-material';
 import { Turf, Sport, TimeSlot, TimeRange } from "../types/index";
 import { formatPrice, getSportIcon } from '../utils/constant';
 import { bookingService, SlotBookingResponse } from '../services/bookingService';
+import { format as formatDate } from 'date-fns';
 
 type Props = {
   open: boolean;
@@ -58,16 +59,58 @@ const TurfPopup: React.FC<Props & { onBookingComplete?: (booking: any) => void }
 
   const steps = ['Select Turf & Date', 'Select Time Range', 'Booking Details', 'Confirmation'];
 
-  // Load time slots when turf and date are selected
-  useEffect(() => {
-    if (selectedSport && selectedDate) {
-      const slots = generateTimeSlots();
-      setTimeSlots(slots);
-      setSelectedSlots([]);
-      setLastSelectedSlot(null);
-      setTimeRanges([]);
+  // Generate time slots (30-minute intervals for 24 hours) - matching the provided logic
+  const generateTimeSlots = (): TimeSlot[] => {
+    const slots: TimeSlot[] = [];
+    
+    for (let hour = 0; hour < 24; hour++) {
+      // First slot: hour:00 - hour:30
+      const startTime1 = `${hour.toString().padStart(2, '0')}:00`;
+      const endTime1 = `${hour.toString().padStart(2, '0')}:30`;
+      
+      // Second slot: hour:30 - (hour+1):00
+      const nextHour = (hour + 1) % 24;
+      const startTime2 = `${hour.toString().padStart(2, '0')}:30`;
+      let endTime2 = `${nextHour.toString().padStart(2, '0')}:00`;
+      
+
+      console.log("endTime1", endTime1,"endTime2", endTime2);
+
+      if(endTime2 == "00:00"){
+        endTime2 = "23:59";
+      }
+
+      slots.push({
+        startTime: startTime1,
+        endTime: endTime1,
+        isAvailable: true,
+        isBooked: false,
+        value: hour * 2
+      });
+      
+      slots.push({
+        startTime: startTime2,
+        endTime: endTime2,
+        isAvailable: true,
+        isBooked: false,
+        value: hour * 2 + 1
+      });
     }
-  }, [selectedSport, selectedDate]);
+    
+    return slots;
+  };
+
+  // Fetch booked slots from API
+  const fetchBookedSlots = async (turfId: number, sportId: number, date: Date): Promise<number[]> => {
+    try {
+      const formattedDate = formatDate(date, 'yyyy-MM-dd');
+      const bookedSlots = await bookingService.getBookedSlots(turfId, sportId, formattedDate);
+      return bookedSlots;
+    } catch (error) {
+      console.error('Error fetching booked slots:', error);
+      return [];
+    }
+  };
 
   // Reset selection when turf changes
   useEffect(() => {
@@ -77,47 +120,37 @@ const TurfPopup: React.FC<Props & { onBookingComplete?: (booking: any) => void }
     setActiveStep(0);
   }, [selectedSport]);
 
+  // Load time slots when turf and date are selected
+  useEffect(() => {
+    let ignore = false;
 
-  if (!turf) return null;
+    async function loadSlots() {
+      if (selectedSport && selectedDate && turf && turf.id) {
+        const baseSlots = generateTimeSlots();
+        console.log("selectedSport", selectedSport)
+        const bookedSlotIndexes = await fetchBookedSlots(turf.id, selectedSport.id_sport, selectedDate);
 
-    // Generate time slots (30-minute intervals for 24 hours) - matching the provided logic
-    const generateTimeSlots = (): TimeSlot[] => {
-      const slots: TimeSlot[] = [];
-      
-      for (let hour = 0; hour < 24; hour++) {
-        // First slot: hour:00 - hour:30
-        const startTime1 = `${hour.toString().padStart(2, '0')}:00`;
-        const endTime1 = `${hour.toString().padStart(2, '0')}:30`;
+        // Mark slots as booked/available according to API response
+        const finalSlots = baseSlots.map(slot => ({
+          ...slot,
+          isAvailable: !bookedSlotIndexes.includes(slot.value),
+          isBooked: bookedSlotIndexes.includes(slot.value)
+        }));
         
-        // Second slot: hour:30 - (hour+1):00
-        const nextHour = (hour + 1) % 24;
-        const startTime2 = `${hour.toString().padStart(2, '0')}:30`;
-        const endTime2 = `${nextHour.toString().padStart(2, '0')}:00`;
-        
-        // Simulate some booked slots (for demo purposes)
-        const isBooked1 = Math.random() < 0.15; // 15% chance of being booked
-        const isBooked2 = Math.random() < 0.15; // 15% chance of being booked
-        
-        slots.push({
-          startTime: startTime1,
-          endTime: endTime1,
-          isAvailable: !isBooked1,
-          isBooked: isBooked1,
-          value: hour * 2 // Matching the provided logic
-        });
-        
-        slots.push({
-          startTime: startTime2,
-          endTime: endTime2,
-          isAvailable: !isBooked2,
-          isBooked: isBooked2,
-          value: hour * 2 + 1 // Matching the provided logic
-        });
+        if (!ignore) {
+          setTimeSlots(finalSlots);
+          setSelectedSlots([]);
+          setLastSelectedSlot(null);
+          setTimeRanges([]);
+        }
       }
-      
-      console.log("slots", slots);
-      return slots;
-    };
+    }
+
+    loadSlots();
+    return () => { ignore = true; };
+  }, [selectedSport, selectedDate, turf]);
+  
+  if (!turf) return null;
   
 
   const resetSelection = () => {
