@@ -231,7 +231,7 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Chip
               icon={<SportsSoccer />}
-              label={turf.sportType}
+              label={turf?.sport_type?.name}
               color="primary"
               variant="outlined"
             />
@@ -243,6 +243,105 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
         </Box>
 
         <Grid container spacing={4}>
+            {/* Sidebar */}
+            <Grid
+            item
+            xs={12}
+            md={5}
+            sx={{
+              order: { xs: 0, md: 2 }
+            }}
+          >
+            <Card
+              sx={{
+                // Sticky only on desktop
+                position: { md: 'sticky', xs: 'static' },
+                top: { md: 20 }
+              }}
+            >
+              <CardContent>
+                {/* <Typography variant="h4" color="primary" gutterBottom>
+                  {formatPrice(selectedSportPrice || 0)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  per hour
+                </Typography> */}
+                {/* <div className="booking-section">
+                    <div className='sport-choose-area'>
+                        {
+                            turf?.sports?.map((
+                              sport: { 
+                                id: number; 
+                                name: string; 
+                                rate_per_hour: number; 
+                                sport_type?: { name?: string } 
+                              },
+                              idx: number
+                            ) =>  (
+                                <div className={`option-${idx}`}  key={idx} >
+                                    <input 
+                                        type="radio" 
+                                        className="sport-list" 
+                                        name="booking-type"
+                                        checked={selectedSport === sport.id}
+                                        onChange={() => handleSelectedSportType(sport.id,sport.rate_per_hour)}
+                                />
+                                <span>{ sport.sport_type?.name || sport.name }</span>
+                                </div>
+                            ))
+                        }
+                    </div>
+                </div> */}
+               <Button
+                  fullWidth
+                  variant="contained"
+                  size="large"
+                  onClick={handleBooking}
+                  sx={{ mt: 2, mb: 2 }}
+                >
+                  Book Now
+                </Button>
+
+                {user && (
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<RateReview />}
+                    onClick={() => setShowReviewForm(!showReviewForm)}
+                    sx={{ mb: 2 }}
+                  >
+                    {showReviewForm ? 'Cancel Review' : 'Write a Review'}
+                  </Button>
+                )}
+
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Quick Info
+                  </Typography>
+                  <List dense>
+                    <ListItem>
+                      <ListItemIcon>
+                        <Star color="primary" />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Rating"
+                        secondary={`${turf.rating?.average || 0}/5 (${turf.rating?.count || 0} reviews)`}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemIcon>
+                        <CheckCircle color="success" />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary="Status"
+                        secondary={turf.status ? 'Available' : 'Not Available'}
+                      />
+                    </ListItem>
+                  </List>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
           {/* Main Content */}
           <Grid item xs={12} md={7}>
             <ImageGallery images={ turf?.images } />
@@ -456,103 +555,22 @@ const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
             </Card>
           </Grid>
 
-          {/* Sidebar */}
-          <Grid item xs={12} md={5}>
-            <Card sx={{ position: 'sticky', top: 20 }}>
-              <CardContent>
-                <Typography variant="h4" color="primary" gutterBottom>
-                  {formatPrice(selectedSportPrice || 0)}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  per hour
-                </Typography>
-                <div className="booking-section">
-                    <div className='sport-choose-area'>
-                        {
-                            turf?.sports?.map((
-                              sport: { 
-                                id: number; 
-                                name: string; 
-                                rate_per_hour: number; 
-                                sport_type?: { name?: string } 
-                              },
-                              idx: number
-                            ) =>  (
-                                <div className={`option-${idx}`}  key={idx} >
-                                    <input 
-                                        type="radio" 
-                                        className="sport-list" 
-                                        name="booking-type"
-                                        checked={selectedSport === sport.id}
-                                        onChange={() => handleSelectedSportType(sport.id,sport.rate_per_hour)}
-                                />
-                                <span>{ sport.sport_type?.name || sport.name }</span>
-                                </div>
-                            ))
-                        }
-                    </div>
-                </div>
-               <Button
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  onClick={handleBooking}
-                  sx={{ mt: 2, mb: 2 }}
-                >
-                  Book Now
-                </Button>
-
-                {user && (
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<RateReview />}
-                    onClick={() => setShowReviewForm(!showReviewForm)}
-                    sx={{ mb: 2 }}
-                  >
-                    {showReviewForm ? 'Cancel Review' : 'Write a Review'}
-                  </Button>
-                )}
-
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Quick Info
-                  </Typography>
-                  <List dense>
-                    <ListItem>
-                      <ListItemIcon>
-                        <Star color="primary" />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary="Rating"
-                        secondary={`${turf.rating?.average || 0}/5 (${turf.rating?.count || 0} reviews)`}
-                      />
-                    </ListItem>
-                    <ListItem>
-                      <ListItemIcon>
-                        <CheckCircle color="success" />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary="Status"
-                        secondary={turf.status ? 'Available' : 'Not Available'}
-                      />
-                    </ListItem>
-                  </List>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+        
         </Grid>
 
         {/* Slot Booking Component */}
         {bookingDialogOpen && (
           <SlotBooking
-            // turfInfo={turf}
+          //   // turfInfo={turf}
             onBookingComplete={(booking) => {
+              console.log("booking:", booking);
               toast.success('Booking created successfully!');
               setBookingDialogOpen(false);
               queryClient.invalidateQueries(['bookings']);
             }}
+          //   onClose={() => setBookingDialogOpen(false)}
+            open={true}
+            turf={turf ?? undefined}
             onClose={() => setBookingDialogOpen(false)}
           />
         )}

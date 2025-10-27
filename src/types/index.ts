@@ -23,6 +23,10 @@ export interface Sport {
   id_sport: number;
   name: string;
   rate_per_hour: number;
+  sport_type: {
+    id: number;
+    name: string;
+  };
   dimensions: string;
   capacity: number;
   rules: string;
@@ -57,7 +61,10 @@ export interface Turf {
   images: any[];
   approved_reviews: any[];
   rate_per_hour: number;
-  sportType: string;
+  sport_type:  {
+    id: number;
+    name: string;
+  };
 }
 
 export interface Slot {
@@ -182,3 +189,21 @@ export interface SearchFilters {
   page?: number;
   limit?: number;
 } 
+
+export interface TimeSlot {
+  startTime: string;
+  endTime: string;
+  isAvailable: boolean;
+  isBooked: boolean;
+  value: number;
+}
+
+
+export interface TimeRange {
+  startTime: string;
+  endTime: string;
+  duration: number;
+  totalPrice: number;
+  start_slot_value: number;
+  end_slot_value: number;
+}

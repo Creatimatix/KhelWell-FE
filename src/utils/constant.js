@@ -8,3 +8,22 @@ export const formatPrice = (price: number | null): string => {
     return `₹${price}/hour`;
   };
   
+
+  export const getSportIcon = (sportType: string) => {
+    switch (sportType) {
+      case 'football':
+        return '⚽';
+      case 'cricket':
+        return '🏏';
+      case 'tennis':
+        return '🎾';
+      case 'basketball':
+        return '🏀';
+      case 'badminton':
+        return '🏸';
+      case 'volleyball':
+        return '🏐';
+      default:
+        return '🏟️';
+    }
+  };

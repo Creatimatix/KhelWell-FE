@@ -286,7 +286,8 @@ const TurfListPage: React.FC = () => {
 
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Typography variant="h6" color="primary">
-                        {formatPrice(turf?.min_price || turf?.min_price || 0)}
+                        {formatPrice(turf?.min_price || 0)}
+                        <sup>*</sup>
                       </Typography>
                       <Button
                         variant="contained"

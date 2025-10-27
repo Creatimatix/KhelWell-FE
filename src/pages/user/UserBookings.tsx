@@ -51,14 +51,14 @@ interface Booking {
   duration: number;
   total_amount: number;
   special_requests: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  status: number;
+  status_text: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   payment_status: 'pending' | 'paid' | 'refunded';
   created_at: string;
   turf: {
     id: number;
     name: string;
-    location_address: string;
-    location_city: string;
+    address: string;
   };
 }
 
@@ -85,7 +85,7 @@ const UserBookings: React.FC = () => {
         return;
       }
 
-      const response = await fetch(BACKEND_API_URL+'slots/my-bookings', {
+      const response = await fetch(BACKEND_API_URL+'slot-bookings/my', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -103,7 +103,7 @@ const UserBookings: React.FC = () => {
         start_time: booking.start_time || '',
         end_time: booking.end_time || '',
         date: booking.date || '',
-        total_amount: booking.total_amount || 0,
+        total_amount: booking.total_price || 0,
         duration: booking.duration || 1,
         status: booking.status || 'pending',
         payment_status: booking.payment_status || 'pending',
@@ -123,8 +123,8 @@ const UserBookings: React.FC = () => {
     if (!selectedBooking) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/slots/cancel/${selectedBooking.id}`, {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(BACKEND_API_URL+`slot-bookings/${selectedBooking.id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -169,7 +169,7 @@ const UserBookings: React.FC = () => {
 
   const filteredBookings = bookings.filter(booking => {
     if (statusFilter === 'all') return true;
-    return booking.status === statusFilter;
+    return String(booking.status) === statusFilter;
   });
 
   if (loading) {
@@ -195,10 +195,10 @@ const UserBookings: React.FC = () => {
               onChange={(e) => setStatusFilter(e.target.value)}
             >
               <MenuItem value="all">All Bookings</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>
-              <MenuItem value="confirmed">Confirmed</MenuItem>
-              <MenuItem value="completed">Completed</MenuItem>
-              <MenuItem value="cancelled">Cancelled</MenuItem>
+              <MenuItem value="0">Pending</MenuItem>
+              <MenuItem value='1'>Confirmed</MenuItem>
+              <MenuItem value="3">Completed</MenuItem>
+              <MenuItem value="2">Cancelled</MenuItem>
             </Select>
           </FormControl>
           <Button
@@ -258,7 +258,7 @@ const UserBookings: React.FC = () => {
                         {booking.turf.name}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {booking.turf.location_city || 'City not available'}
+                        {booking.turf.address || 'City not available'}
                       </Typography>
                     </Box>
                   </TableCell>
@@ -276,7 +276,7 @@ const UserBookings: React.FC = () => {
                     })()}
                   </TableCell>
                   <TableCell>
-                    {(booking.start_time || '').slice(0, 5)} - {(booking.end_time || '').slice(0, 5)}
+                    {(booking.start_time || '')} - {(booking.end_time || '')}
                   </TableCell>
                   <TableCell>
                     {booking.duration} hour{booking.duration > 1 ? 's' : ''}
@@ -286,8 +286,8 @@ const UserBookings: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={booking.status}
-                      color={getStatusColor(booking.status) as any}
+                      label={booking.status_text}
+                      color={getStatusColor(booking.status_text) as any}
                       size="small"
                     />
                   </TableCell>
@@ -311,7 +311,7 @@ const UserBookings: React.FC = () => {
                           <ViewIcon />
                         </IconButton>
                       </Tooltip>
-                      {booking.status === 'pending' && (
+                      {booking.status_text === 'pending' && (
                         <Tooltip title="Cancel Booking">
                           <IconButton
                             size="small"
@@ -350,7 +350,7 @@ const UserBookings: React.FC = () => {
                   {selectedBooking.turf.name}
                 </Typography>
                 <Typography color="text.secondary" gutterBottom>
-                  {selectedBooking.turf.location_address || 'Address not available'}, {selectedBooking.turf.location_city || 'City not available'}
+                  {selectedBooking.turf.address || 'Address not available'}
                 </Typography>
               </Grid>
               
@@ -380,13 +380,12 @@ const UserBookings: React.FC = () => {
                   <Typography variant="subtitle2">Time</Typography>
                 </Box>
                 <Typography>
-                  {(selectedBooking.start_time || '').slice(0, 5)} - {(selectedBooking.end_time || '').slice(0, 5)}
+                  {(selectedBooking.start_time || '')} - {(selectedBooking.end_time || '')}
                 </Typography>
               </Grid>
 
               <Grid item xs={12} md={6}>
                 <Box display="flex" alignItems="center" mb={1}>
-                  <MoneyIcon sx={{ mr: 1, color: 'text.secondary' }} />
                   <Typography variant="subtitle2">Amount</Typography>
                 </Box>
                 <Typography variant="h6" color="primary">
@@ -401,14 +400,20 @@ const UserBookings: React.FC = () => {
                 </Typography>
               </Grid>
 
-              <Grid item xs={12}>
+              <Grid item xs={12} md={6}>
                 <Typography variant="subtitle2" gutterBottom>Status</Typography>
                 <Box display="flex" gap={1}>
                   <Chip
-                    label={selectedBooking.status}
-                    color={getStatusColor(selectedBooking.status) as any}
+                    label={selectedBooking.status_text}
+                    color={getStatusColor(selectedBooking.status_text) as any}
                   />
-                  <Chip
+                </Box>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" gutterBottom>Payment Status</Typography>
+                <Box display="flex" gap={1}>
+                <Chip
                     label={selectedBooking.payment_status}
                     color={getPaymentStatusColor(selectedBooking.payment_status) as any}
                   />
@@ -473,7 +478,7 @@ const UserBookings: React.FC = () => {
                   } catch (error) {
                     return 'Invalid date';
                   }
-                })()} at {(selectedBooking.start_time || '').slice(0, 5)}
+                })()} at {(selectedBooking.start_time || '').slice(0, 5)} - {(selectedBooking.end_time || '').slice(0, 5)}
               </Typography>
             </Box>
           )}

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Booking, ApiResponse } from '../types';
+import { BACKEND_API_URL } from '../utils/constant';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
@@ -29,9 +30,74 @@ export interface CreateBookingData {
   specialRequests?: string;
 }
 
+export interface SlotBookingData {
+  turfId: number;
+  sportId: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  start_slot_value: number;
+  end_slot_value: number;
+  totalPrice: number;
+  status: number;
+  specialRequests: string;
+  sportType: string;
+}
+
+export interface SlotBookingResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    booking: {
+      id: number;
+      user: {
+        id: number;
+        name: string;
+        email: string;
+      };
+      turf: {
+        id: number;
+        name: string;
+        location: string;
+        address: string;
+      };
+      sport: {
+        id: number;
+        name: string;
+        type: string;
+      };
+      date: string;
+      start_time: string;
+      end_time: string;
+      duration: string;
+      start_slot_value: number;
+      end_slot_value: number;
+      total_price: string;
+      status: number;
+      special_requests: string;
+      created_at: string;
+    };
+  };
+}
+
 export const bookingService = {
   async createBooking(bookingData: CreateBookingData): Promise<Booking> {
     const response = await api.post<Booking>('/bookings', bookingData);
+    return response.data;
+  },
+
+  async createSlotBooking(bookingData: SlotBookingData): Promise<SlotBookingResponse> {
+    const response = await axios.post<SlotBookingResponse>(
+      BACKEND_API_URL+'slot-bookings',
+      bookingData,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+      }
+    );
     return response.data;
   },
 

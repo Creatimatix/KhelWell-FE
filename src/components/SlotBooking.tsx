@@ -22,158 +22,52 @@ import {
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format, addDays, isBefore, startOfDay } from 'date-fns';
-import { Close as CloseIcon } from '@mui/icons-material';
+import { Close as CloseIcon, SportsSoccer } from '@mui/icons-material';
 
-interface TimeRange {
-  startTime: string;
-  endTime: string;
-  duration: number;
-  totalPrice: number;
-}
+import { Turf, Sport, TimeSlot, TimeRange } from "../types/index";
+import { formatPrice, getSportIcon } from '../utils/constant';
+import { bookingService, SlotBookingResponse } from '../services/bookingService';
 
-interface TimeSlot {
-  startTime: string;
-  endTime: string;
-  isAvailable: boolean;
-  isBooked: boolean;
-  value: number;
-}
+type Props = {
+  open: boolean;
+  turf?: Turf | null;
+  onClose: () => void;
+};
 
-interface Turf {
-  id: string;
-  name: string;
-  price: number;
-  description: string;
-  sportType: string;
-}
 
-interface SlotBookingProps {
-  onBookingComplete?: (booking: any) => void;
-  onClose?: () => void;
-}
 
-const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose }) => {
-  // Static turf data - multiple turfs for selection
-  const availableTurfs: Turf[] = [
-    {
-      id: "turf1",
-      name: "Premium Football Ground",
-      price: 1200,
-      description: "Full-size football field with professional quality turf",
-      sportType: "football"
-    },
-    {
-      id: "turf2", 
-      name: "Cricket Pitch",
-      price: 1000,
-      description: "Cricket pitch with proper dimensions and facilities",
-      sportType: "cricket"
-    },
-    {
-      id: "turf3",
-      name: "Tennis Court",
-      price: 800,
-      description: "Professional tennis court with lighting",
-      sportType: "tennis"
-    },
-    {
-      id: "turf4",
-      name: "Basketball Court",
-      price: 600,
-      description: "Indoor basketball court with air conditioning",
-      sportType: "basketball"
-    },
-    {
-      id: "turf5",
-      name: "Badminton Court",
-      price: 500,
-      description: "Professional badminton court with proper flooring",
-      sportType: "badminton"
-    },
-    {
-      id: "turf6",
-      name: "Volleyball Court",
-      price: 700,
-      description: "Beach volleyball court with sand surface",
-      sportType: "volleyball"
-    },
-    {
-      id: "turf7",
-      name: "Multi-Sport Ground",
-      price: 900,
-      description: "Versatile ground for multiple sports",
-      sportType: "multi-sport"
-    },
-    {
-      id: "turf8",
-      name: "Training Ground",
-      price: 400,
-      description: "Basic training ground for practice sessions",
-      sportType: "general"
-    }
-  ];
-
+const TurfPopup: React.FC<Props & { onBookingComplete?: (booking: any) => void }> = ({
+  open,
+  turf,
+  onClose,
+  onBookingComplete,
+}) => {
+  const [activeStep, setActiveStep] = useState(0);
+  const [selectedSport, setSelectedSport] = useState<Sport | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(addDays(new Date(), 1));
-  const [selectedTurf, setSelectedTurf] = useState<Turf | null>(null);
+  
   const [timeRanges, setTimeRanges] = useState<TimeRange[]>([]);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [selectedSlots, setSelectedSlots] = useState<number[]>([]);
   const [lastSelectedSlot, setLastSelectedSlot] = useState<number | null>(null);
+
   const [bookingLoading, setBookingLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [specialRequests, setSpecialRequests] = useState('');
-  const [activeStep, setActiveStep] = useState(0);
+  const [bookingResponse, setBookingResponse] = useState<SlotBookingResponse | null>(null);
 
   const steps = ['Select Turf & Date', 'Select Time Range', 'Booking Details', 'Confirmation'];
 
-  // Generate time slots (30-minute intervals for 24 hours) - matching the provided logic
-  const generateTimeSlots = (): TimeSlot[] => {
-    const slots: TimeSlot[] = [];
-    
-    for (let hour = 0; hour < 24; hour++) {
-      // First slot: hour:00 - hour:30
-      const startTime1 = `${hour.toString().padStart(2, '0')}:00`;
-      const endTime1 = `${hour.toString().padStart(2, '0')}:30`;
-      
-      // Second slot: hour:30 - (hour+1):00
-      const nextHour = (hour + 1) % 24;
-      const startTime2 = `${hour.toString().padStart(2, '0')}:30`;
-      const endTime2 = `${nextHour.toString().padStart(2, '0')}:00`;
-      
-      // Simulate some booked slots (for demo purposes)
-      const isBooked1 = Math.random() < 0.15; // 15% chance of being booked
-      const isBooked2 = Math.random() < 0.15; // 15% chance of being booked
-      
-      slots.push({
-        startTime: startTime1,
-        endTime: endTime1,
-        isAvailable: !isBooked1,
-        isBooked: isBooked1,
-        value: hour * 2 // Matching the provided logic
-      });
-      
-      slots.push({
-        startTime: startTime2,
-        endTime: endTime2,
-        isAvailable: !isBooked2,
-        isBooked: isBooked2,
-        value: hour * 2 + 1 // Matching the provided logic
-      });
-    }
-    
-    return slots;
-  };
-
   // Load time slots when turf and date are selected
   useEffect(() => {
-    if (selectedTurf && selectedDate) {
+    if (selectedSport && selectedDate) {
       const slots = generateTimeSlots();
       setTimeSlots(slots);
       setSelectedSlots([]);
       setLastSelectedSlot(null);
       setTimeRanges([]);
     }
-  }, [selectedTurf, selectedDate]);
+  }, [selectedSport, selectedDate]);
 
   // Reset selection when turf changes
   useEffect(() => {
@@ -181,10 +75,60 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose })
     setSelectedSlots([]);
     setLastSelectedSlot(null);
     setActiveStep(0);
-  }, [selectedTurf]);
+  }, [selectedSport]);
+
+
+  if (!turf) return null;
+
+    // Generate time slots (30-minute intervals for 24 hours) - matching the provided logic
+    const generateTimeSlots = (): TimeSlot[] => {
+      const slots: TimeSlot[] = [];
+      
+      for (let hour = 0; hour < 24; hour++) {
+        // First slot: hour:00 - hour:30
+        const startTime1 = `${hour.toString().padStart(2, '0')}:00`;
+        const endTime1 = `${hour.toString().padStart(2, '0')}:30`;
+        
+        // Second slot: hour:30 - (hour+1):00
+        const nextHour = (hour + 1) % 24;
+        const startTime2 = `${hour.toString().padStart(2, '0')}:30`;
+        const endTime2 = `${nextHour.toString().padStart(2, '0')}:00`;
+        
+        // Simulate some booked slots (for demo purposes)
+        const isBooked1 = Math.random() < 0.15; // 15% chance of being booked
+        const isBooked2 = Math.random() < 0.15; // 15% chance of being booked
+        
+        slots.push({
+          startTime: startTime1,
+          endTime: endTime1,
+          isAvailable: !isBooked1,
+          isBooked: isBooked1,
+          value: hour * 2 // Matching the provided logic
+        });
+        
+        slots.push({
+          startTime: startTime2,
+          endTime: endTime2,
+          isAvailable: !isBooked2,
+          isBooked: isBooked2,
+          value: hour * 2 + 1 // Matching the provided logic
+        });
+      }
+      
+      console.log("slots", slots);
+      return slots;
+    };
+  
+
+  const resetSelection = () => {
+    setTimeRanges([]);
+    setSelectedSlots([]);
+    setLastSelectedSlot(null);
+    setActiveStep(1);
+  };
 
   const handleTimeSlotClick = (slot: TimeSlot) => {
-    if (!selectedTurf) return;
+    if (!selectedSport) return;
     
     if (slot.isBooked) {
       setError('This time slot is already booked');
@@ -223,13 +167,15 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose })
       
       if (firstSlot && lastSlot) {
         const duration = (selectedSlots.length + 1) * 0.5; // Each slot is 30 minutes
-        const totalPrice = selectedTurf.price * duration;
+        const totalPrice = selectedSport.rate_per_hour * duration;
         
         const newRange: TimeRange = {
           startTime: firstSlot.startTime,
           endTime: lastSlot.endTime,
-          duration,
-          totalPrice
+          duration: duration,
+          totalPrice: totalPrice,
+          start_slot_value: firstSlot.value,
+          end_slot_value: lastSlot.value
         };
         
         setTimeRanges([newRange]);
@@ -243,68 +189,6 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose })
       setTimeRanges([]);
       setError(null);
     }
-  };
-
-
-  const handleBooking = async () => {
-    if (timeRanges.length === 0 || !selectedDate || !selectedTurf) return;
-
-    setBookingLoading(true);
-    setError(null);
-
-    try {
-      // Simulate booking process with static data
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
-      
-      const bookingData = {
-        id: `booking-${Date.now()}`,
-        turfId: selectedTurf.id,
-        turfName: selectedTurf.name,
-        sportType: selectedTurf.sportType,
-        date: format(selectedDate, 'yyyy-MM-dd'),
-        startTime: timeRanges[0].startTime,
-        endTime: timeRanges[0].endTime,
-        duration: timeRanges[0].duration,
-        totalPrice: timeRanges[0].totalPrice,
-        specialRequests: specialRequests.trim() || '',
-        status: 'confirmed'
-      };
-
-      setActiveStep(3);
-
-      console.log("bookingData", bookingData);
-
-      if (onBookingComplete) {
-        onBookingComplete(bookingData);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to create booking');
-    } finally {
-      setBookingLoading(false);
-    }
-  };
-
-  const handleClose = () => {
-    if (onClose) {
-      onClose();
-    }
-  };
-
-  const resetSelection = () => {
-    setTimeRanges([]);
-    setSelectedSlots([]);
-    setLastSelectedSlot(null);
-    setActiveStep(1);
-  };
-
-
-
-  const formatPrice = (price: number) => {
-    return `₹${price}`;
-  };
-
-  const isDateDisabled = (date: Date) => {
-    return isBefore(date, startOfDay(new Date()));
   };
 
   const renderStepContent = (step: number) => {
@@ -321,32 +205,34 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose })
                 Choose a turf:
               </Typography>
               <Grid container spacing={2}>
-                {availableTurfs.map((turf) => (
-                  <Grid item xs={6} sm={3} key={turf.id}>
+                {turf.sports.map((sport) => (
+                  <Grid item xs={6} sm={3} key={sport.id}>
                     <Card 
                       sx={{ 
                         cursor: 'pointer',
-                        border: selectedTurf?.id === turf.id ? 2 : 1,
-                        borderColor: selectedTurf?.id === turf.id ? 'primary.main' : 'divider',
+                        border: selectedSport?.id === sport.id ? 2 : 1,
+                        borderColor: selectedSport?.id === sport.id ? 'primary.main' : 'divider',
                         '&:hover': { boxShadow: 2 },
                         transition: 'all 0.2s ease-in-out',
                         height: '100%'
                       }}
-                      onClick={() => setSelectedTurf(turf)}
+                      onClick={() => setSelectedSport(sport)}
                     >
                       <CardContent sx={{ p: 2, textAlign: 'center' }}>
                         <Typography variant="h6" sx={{ fontSize: '1rem', mb: 1 }}>
-                          {turf.name}
+                        {sport?.sport_type?.name}
                         </Typography>
                         <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold', mb: 1 }}>
-                          {formatPrice(turf.price)}/hour
+                          {formatPrice(sport?.rate_per_hour ?? 0)}
                         </Typography>
-                        <Chip 
-                          label={turf.sportType} 
-                          size="small" 
-                          color="secondary"
-                          sx={{ fontSize: '0.7rem' }}
-                        />
+                        
+                        <Chip
+                          // label={turf?.sport_type?.name || turf?.sport_type?.name || 'multi-sport'}
+                          label={getSportIcon((sport?.sport_type?.name ?? '').toLowerCase())}
+                          size="small"
+                          color="primary"
+                          sx={{ fontSize: '1.5rem' }}
+                      />
                       </CardContent>
                     </Card>
                   </Grid>
@@ -374,141 +260,139 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose })
             </LocalizationProvider>
           </Box>
         );
-
       case 1:
-        return (
-          <Box>
-            <Typography variant="h6" gutterBottom>
-              Select Time Range
-            </Typography>
-            
-            {selectedDate && selectedTurf && (
-              <Box mt={3}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Select time range for {format(selectedDate, 'MMM dd, yyyy')} - {selectedTurf.name}
-                </Typography>
-                
-                {error && (
-                  <Alert severity="error" sx={{ mb: 2 }} action={
-                    <Button color="inherit" size="small" onClick={() => setError(null)}>
-                      Dismiss
-                    </Button>
-                  }>
-                    {error}
-                  </Alert>
-                )}
-
-                {selectedSlots.length > 0 && (
-                  <Card sx={{ border: 2, borderColor: 'primary.main', mb: 2 }}>
-                    <CardContent>
-                      <Typography variant="h6" color="primary">
-                        {selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''} selected
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Click on consecutive slots to extend your selection, or click the same slot to deselect
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {timeSlots.length > 0 ? (
-                  <Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      Available time slots (30-minute intervals) - Click to select consecutive slots
-                    </Typography>
-                    <Grid container spacing={0.5}>
-                      {timeSlots.map((slot, index) => {
-                        const isSelected = selectedSlots.includes(slot.value);
-                        const isBooked = slot.isBooked;
-                        
-                        return (
-                          <Grid item xs={3} sm={2.4} md={2} lg={1.5} key={index}>
-                            <Card 
-                              sx={{
-                                cursor: slot.isAvailable ? 'pointer' : 'not-allowed',
-                                '&:hover': slot.isAvailable ? { boxShadow: 2 } : {},
-                                border: 1,
-                                borderColor: isBooked
-                                  ? 'error.main'
-                                  : isSelected
-                                  ? 'success.main'
-                                  : 'divider',
-                                backgroundColor: isBooked
-                                  ? '#fdecea'        // light red for booked
-                                  : isSelected
-                                  ? '#'        // solid green for selected
-                                  : 'background.paper',
-                                color: isBooked
-                                  ? '#b71c1c'        // dark red text
-                                  : isSelected
-                                  ? '#fff'            // white text when selected
-                                  : 'text.primary',   // default text color
-                                opacity: slot.isAvailable ? 1 : 0.6,
-                                transition: 'all 0.2s ease-in-out',
-                                minHeight: 50,
-                                maxHeight: 60,
-                                borderRadius: 1,
-                              }}                              
-                              onClick={() => handleTimeSlotClick(slot)}
-                            >
-                              <CardContent sx={{ textAlign: 'center', py: 0.5, px: 0.5 }}>
-                                <Typography variant="caption" sx={{ 
-                                  fontSize: '0.6rem', 
-                                  lineHeight: 1.2, 
-                                  display: 'block',
-                                  color: isBooked ? 'error.main' : isSelected ? 'primary.main' : 'text.primary'
-                                }}>
-                                  {format(new Date(`2000-01-01T${slot.startTime}`), 'h:mm a')}
-                                </Typography>
-                                <Typography variant="caption" sx={{ 
-                                  fontSize: '0.5rem', 
-                                  lineHeight: 1, 
-                                  display: 'block',
-                                  color: isBooked ? 'error.main' : isSelected ? 'primary.main' : 'text.secondary'
-                                }}>
-                                  to
-                                </Typography>
-                                <Typography variant="caption" sx={{ 
-                                  fontSize: '0.6rem', 
-                                  lineHeight: 1.2, 
-                                  display: 'block',
-                                  color: isBooked ? 'error.main' : isSelected ? 'primary.main' : 'text.primary'
-                                }}>
-                                  {format(new Date(`2000-01-01T${slot.endTime}`), 'h:mm a')}
-                                </Typography>
-                                <Box sx={{ mt: 0.2 }}>
-                                  <Chip 
-                                    label={isBooked ? '✗' : isSelected ? '✓' : '○'} 
-                                    color={isBooked ? 'error' : isSelected ? 'primary' : 'default'}
-                                    variant={isSelected ? 'filled' : 'outlined'}
-                                    size="small" 
-                                    sx={{ minWidth: 16, height: 12, fontSize: '0.5rem' }}
-                                  />
-                                </Box>
-                              </CardContent>
-                            </Card>
-                          </Grid>
-                        );
-                      })}
-                    </Grid>
-                  </Box>
-                ) : (
-                  <Alert severity="info">
-                    No available time slots for this date.
-                  </Alert>
-                )}
-
-
-                <Alert severity="info" sx={{ mt: 2 }}>
-                  <Typography variant="body2">
-                    <strong>How to book:</strong> Click on consecutive time slots to select your range. For example, click "6:00 PM - 6:30 PM", then "6:30 PM - 7:00 PM", then "7:00 PM - 7:30 PM" to book 1.5 hours. Click the same slot again to deselect it.
+          return (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Select Time Range
+              </Typography>
+              
+              {selectedDate && selectedSport && (
+                <Box mt={3}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Select time range for {format(selectedDate, 'MMM dd, yyyy')} - {selectedSport.name}
                   </Typography>
-                </Alert>
-              </Box>
-            )}
-          </Box>
-        );
-
+                  
+                  {error && (
+                    <Alert severity="error" sx={{ mb: 2 }} action={
+                      <Button color="inherit" size="small" onClick={() => setError(null)}>
+                        Dismiss
+                      </Button>
+                    }>
+                      {error}
+                    </Alert>
+                  )}
+  
+                  {selectedSlots.length > 0 && (
+                    <Card sx={{ border: 2, borderColor: 'primary.main', mb: 2 }}>
+                      <CardContent>
+                        <Typography variant="h6" color="primary">
+                          {selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''} selected
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Click on consecutive slots to extend your selection, or click the same slot to deselect
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  )}
+  
+                  {timeSlots.length > 0 ? (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Available time slots (30-minute intervals) - Click to select consecutive slots
+                      </Typography>
+                      <Grid container spacing={0.5}>
+                        {timeSlots.map((slot, index) => {
+                          const isSelected = selectedSlots.includes(slot.value);
+                          const isBooked = slot.isBooked;
+                          
+                          return (
+                            <Grid item xs={3} sm={2.4} md={2} lg={1.5} key={index}>
+                              <Card 
+                                sx={{
+                                  cursor: slot.isAvailable ? 'pointer' : 'not-allowed',
+                                  '&:hover': slot.isAvailable ? { boxShadow: 2 } : {},
+                                  border: 1,
+                                  borderColor: isBooked
+                                    ? 'error.main'
+                                    : isSelected
+                                    ? 'success.main'
+                                    : 'divider',
+                                  backgroundColor: isBooked
+                                    ? '#fdecea'        // light red for booked
+                                    : isSelected
+                                    ? '#'        // solid green for selected
+                                    : 'background.paper',
+                                  color: isBooked
+                                    ? '#b71c1c'        // dark red text
+                                    : isSelected
+                                    ? '#fff'            // white text when selected
+                                    : 'text.primary',   // default text color
+                                  opacity: slot.isAvailable ? 1 : 0.6,
+                                  transition: 'all 0.2s ease-in-out',
+                                  minHeight: 50,
+                                  maxHeight: 60,
+                                  borderRadius: 1,
+                                }}                              
+                                onClick={() => handleTimeSlotClick(slot)}
+                              >
+                                <CardContent sx={{ textAlign: 'center', py: 0.5, px: 0.5 }}>
+                                  <Typography variant="caption" sx={{ 
+                                    fontSize: '0.6rem', 
+                                    lineHeight: 1.2, 
+                                    display: 'block',
+                                    color: isBooked ? 'error.main' : isSelected ? 'primary.main' : 'text.primary'
+                                  }}>
+                                    {format(new Date(`2000-01-01T${slot.startTime}`), 'h:mm a')}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ 
+                                    fontSize: '0.5rem', 
+                                    lineHeight: 1, 
+                                    display: 'block',
+                                    color: isBooked ? 'error.main' : isSelected ? 'primary.main' : 'text.secondary'
+                                  }}>
+                                    to
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ 
+                                    fontSize: '0.6rem', 
+                                    lineHeight: 1.2, 
+                                    display: 'block',
+                                    color: isBooked ? 'error.main' : isSelected ? 'primary.main' : 'text.primary'
+                                  }}>
+                                    {format(new Date(`2000-01-01T${slot.endTime}`), 'h:mm a')}
+                                  </Typography>
+                                  <Box sx={{ mt: 0.2 }}>
+                                    <Chip 
+                                      label={isBooked ? '✗' : isSelected ? '✓' : '○'} 
+                                      color={isBooked ? 'error' : isSelected ? 'primary' : 'default'}
+                                      variant={isSelected ? 'filled' : 'outlined'}
+                                      size="small" 
+                                      sx={{ minWidth: 16, height: 12, fontSize: '0.5rem' }}
+                                    />
+                                  </Box>
+                                </CardContent>
+                              </Card>
+                            </Grid>
+                          );
+                        })}
+                      </Grid>
+                    </Box>
+                  ) : (
+                    <Alert severity="info">
+                      No available time slots for this date.
+                    </Alert>
+                  )}
+  
+  
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    <Typography variant="body2">
+                      <strong>How to book:</strong> Click on consecutive time slots to select your range. For example, click "6:00 PM - 6:30 PM", then "6:30 PM - 7:00 PM", then "7:00 PM - 7:30 PM" to book 1.5 hours. Click the same slot again to deselect it.
+                    </Typography>
+                  </Alert>
+                </Box>
+              )}
+            </Box>
+          );  
       case 2:
         return (
           <Box>
@@ -516,7 +400,17 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose })
               Booking Details
             </Typography>
             
-            {timeRanges.length > 0 && selectedTurf && (
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }} action={
+                <Button color="inherit" size="small" onClick={() => setError(null)}>
+                  Dismiss
+                </Button>
+              }>
+                {error}
+              </Alert>
+            )}
+            
+            {timeRanges.length > 0 && selectedSport && (
               <Box mb={3}>
                 <Typography variant="subtitle1" gutterBottom>
                   Booking Summary
@@ -524,7 +418,7 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose })
                 <Card sx={{ border: 2, borderColor: 'primary.main' }}>
                   <CardContent>
                     <Typography variant="h6" color="primary">
-                      {selectedTurf.name}
+                      {selectedSport.sport_type.name}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {selectedDate && format(selectedDate, 'MMM dd, yyyy')}
@@ -542,7 +436,6 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose })
                 </Card>
               </Box>
             )}
-
             <TextField
               fullWidth
               multiline
@@ -561,7 +454,6 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose })
             </Alert>
           </Box>
         );
-
       case 3:
         return (
           <Box>
@@ -576,47 +468,152 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose })
               </Typography>
             </Alert>
 
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Booking Summary
-                </Typography>
-                <Box>
-                  <Typography variant="body2">
-                    • Date: {selectedDate && format(selectedDate, 'MMM dd, yyyy')}
+            {bookingResponse && bookingResponse.data ? (
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    Booking Summary
                   </Typography>
-                  <Typography variant="body2">
-                    • Time: {timeRanges[0] && `${format(new Date(`2000-01-01T${timeRanges[0].startTime}`), 'h:mm a')} - ${format(new Date(`2000-01-01T${timeRanges[0].endTime}`), 'h:mm a')}`}
-                  </Typography>
-                  <Typography variant="body2">
-                    • Turf: {selectedTurf?.name}
-                  </Typography>
-                  <Typography variant="body2">
-                    • Duration: {timeRanges[0]?.duration || 0} hours
-                  </Typography>
-                  <Typography variant="body2">
-                    • Total Amount: {formatPrice(timeRanges[0]?.totalPrice || 0)}
-                  </Typography>
-                  {specialRequests && (
+                  <Box>
                     <Typography variant="body2">
-                      • Special Requests: {specialRequests}
+                      • Booking ID: {bookingResponse.data.booking.id}
                     </Typography>
-                  )}
-                </Box>
-              </CardContent>
-            </Card>
+                    <Typography variant="body2">
+                      • Turf: {bookingResponse.data.booking.turf.name}
+                    </Typography>
+                    <Typography variant="body2">
+                      • Location: {bookingResponse.data.booking.turf.location}
+                    </Typography>
+                    <Typography variant="body2">
+                      • Sport: {bookingResponse.data.booking.sport.name} ({bookingResponse.data.booking.sport.type})
+                    </Typography>
+                    <Typography variant="body2">
+                      • Date: {bookingResponse.data.booking.date}
+                    </Typography>
+                    <Typography variant="body2">
+                      • Time: {format(new Date(bookingResponse.data.booking.start_time), 'h:mm a')} - {format(new Date(bookingResponse.data.booking.end_time), 'h:mm a')}
+                    </Typography>
+                    <Typography variant="body2">
+                      • Duration: {bookingResponse.data.booking.duration} hours
+                    </Typography>
+                    <Typography variant="body2">
+                      • Total Amount: ₹{bookingResponse.data.booking.total_price}
+                    </Typography>
+                    <Typography variant="body2">
+                      • Status: {bookingResponse.data.booking.status}
+                    </Typography>
+                    {bookingResponse.data.booking.special_requests && (
+                      <Typography variant="body2">
+                        • Special Requests: {bookingResponse.data.booking.special_requests}
+                      </Typography>
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    Booking Summary
+                  </Typography>
+                  <Box>
+                    <Typography variant="body2">
+                      • Date: {selectedDate && format(selectedDate, 'MMM dd, yyyy')}
+                    </Typography>
+                    <Typography variant="body2">
+                      • Time: {timeRanges[0] && `${format(new Date(`2000-01-01T${timeRanges[0].startTime}`), 'h:mm a')} - ${format(new Date(`2000-01-01T${timeRanges[0].endTime}`), 'h:mm a')}`}
+                    </Typography>
+                    <Typography variant="body2">
+                      • Turf: {selectedSport?.sport_type.name}
+                    </Typography>
+                    <Typography variant="body2">
+                      • Duration: {timeRanges[0]?.duration || 0} hours
+                    </Typography>
+                    <Typography variant="body2">
+                      • Total Amount: {formatPrice(timeRanges[0]?.totalPrice || 0)}
+                    </Typography>
+                    {specialRequests && (
+                      <Typography variant="body2">
+                        • Special Requests: {specialRequests}
+                      </Typography>
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            )}
           </Box>
         );
-
       default:
         return null;
     }
   };
 
+  const isDateDisabled = (date: Date) => {
+    return isBefore(date, startOfDay(new Date()));
+  };
+
+  const handleBooking = async () => {
+    if (timeRanges.length === 0 || !selectedDate || !selectedSport) return;
+
+    setBookingLoading(true);
+    setError(null);
+
+    try {
+      const bookingData = {
+        turfId: turf.id,
+        sportId: selectedSport.id_sport,
+        date: format(selectedDate, 'yyyy-MM-dd'),
+        startTime: timeRanges[0].startTime,
+        endTime: timeRanges[0].endTime,
+        duration: timeRanges[0].duration,
+        start_slot_value: timeRanges[0].start_slot_value,
+        end_slot_value: timeRanges[0].end_slot_value,
+        totalPrice: timeRanges[0].totalPrice,
+        status: 0,
+        specialRequests: specialRequests.trim() || '',
+        sportType: selectedSport.sport_type.name,
+      };
+
+      console.log("Sending booking data:", bookingData);
+
+      const response = await bookingService.createSlotBooking(bookingData);
+      
+      console.log("Booking response:", response);
+
+      if (response.success && response.data) {
+        setBookingResponse(response);
+        setActiveStep(3);
+        
+        if (onBookingComplete) {
+          onBookingComplete(response.data.booking);
+        }
+      } else {
+        setError(response.message || 'Failed to create booking');
+      }
+    } catch (err: any) {
+      console.error("Booking error:", err);
+      
+      // Handle API error response
+      if (err.response && err.response.data) {
+        const errorData = err.response.data;
+        if (errorData.success === false && errorData.message) {
+          setError(errorData.message);
+        } else {
+          setError(errorData.message || 'Failed to create booking');
+        }
+      } else {
+        setError(err.message || 'Failed to create booking');
+      }
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
+
   return (
     <Dialog 
       open={true} 
-      onClose={handleClose}
+      onClose={onClose}
       maxWidth="md"
       fullWidth
       PaperProps={{
@@ -628,7 +625,7 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose })
           <Typography variant="h5">
             Book Turf Slot
           </Typography>
-          <IconButton onClick={handleClose} size="small">
+          <IconButton onClick={onClose} size="small">
             <CloseIcon />
           </IconButton>
         </Box>
@@ -677,11 +674,11 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose })
             </Button>
           )}
           
-          {activeStep === 0 && selectedDate && selectedTurf && (
+          {activeStep === 0 && selectedDate && selectedSport && (
             <Button 
               variant="contained" 
               onClick={() => setActiveStep(1)}
-              disabled={!selectedDate || !selectedTurf}
+              disabled={!selectedDate || !selectedSport}
             >
               Continue
             </Button>
@@ -708,7 +705,7 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose })
           )}
           
           {activeStep === 3 && (
-            <Button variant="contained" onClick={handleClose}>
+            <Button variant="contained" onClick={onClose}>
               Close
             </Button>
           )}
@@ -718,4 +715,4 @@ const SlotBooking: React.FC<SlotBookingProps> = ({ onBookingComplete, onClose })
   );
 };
 
-export default SlotBooking; 
+export default TurfPopup;
