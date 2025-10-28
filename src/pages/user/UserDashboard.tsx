@@ -81,15 +81,13 @@ interface Booking {
   turf: {
     name: string;
     sportType: string;
-    location: {
-      city: string;
-    };
+    location: string;
   };
   date: string;
-  startTime: string;
-  endTime: string;
-  totalAmount: number;
-  status: string;
+  start_time: string;
+  end_time: string;
+  total_price: number;
+  status_text: string;
   paymentStatus: string;
 }
 
@@ -112,7 +110,7 @@ const UserDashboard: React.FC = () => {
     totalBookings: 0,
     completedBookings: 0,
     totalSpent: 0,
-    favoriteSport: ''
+    // favoriteSport: ''
   });
 
   
@@ -150,25 +148,28 @@ const UserDashboard: React.FC = () => {
       const eventsData = await eventsResponse.json();
 
       // Fetch user dashboard data
-      // const dashboardResponse = await fetch(BACKEND_API_URL+'users/dashboard', {
-      //   headers: {
-      //     'Authorization': `Bearer ${token}`,
-      //     'Accept': `application/json`
-      //   }
-      // });
-      // const dashboardData = await dashboardResponse.json();
+      const dashboardResponse = await fetch(BACKEND_API_URL+'slot-bookings/my/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': `application/json`
+        }
+      });
+      const dashboardData = await dashboardResponse.json();
 
+      console.log("dashboardData:", dashboardData)
       console.log("eventsData:", eventsData)
       
       setNearbyTurfs(turfsData.turfs || []);
       setEvents(eventsData.data.data || []);
-      // setRecentBookings(dashboardData.recentBookings || []);
-      // setStatistics({
-      //   totalBookings: dashboardData.statistics?.totalBookings || 0,
-      //   completedBookings: dashboardData.statistics?.completedBookings || 0,
-      //   totalSpent: dashboardData.statistics?.totalSpent || 0,
-      //   favoriteSport: dashboardData.statistics?.favoriteSport || ''
-      // });
+      setRecentBookings(dashboardData.recent_bookings || []);
+      
+      
+      setStatistics({
+        totalBookings: dashboardData?.data?.total_bookings || 0,
+        completedBookings: dashboardData.data?.completed_bookings || 0,
+        totalSpent: dashboardData.data?.total_spent || 0,
+        // favoriteSport: dashboardData.statistics?.favoriteSport || ''
+      });
     } catch (err: any) {
       setError('Failed to load dashboard data');
       console.error('Dashboard error:', err);
@@ -308,7 +309,7 @@ const UserDashboard: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        {/* <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center">
@@ -324,7 +325,7 @@ const UserDashboard: React.FC = () => {
               </Box>
             </CardContent>
           </Card>
-        </Grid>
+        </Grid> */}
       </Grid>
 
       {/* Quick Actions */}
@@ -557,25 +558,25 @@ const UserDashboard: React.FC = () => {
                       secondary={
                         <Box>
                           <Typography variant="body2">
-                            {formatDate(booking.date)} • {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
+                            {formatDate(booking.date)} • {formatTime(booking.start_time.slice(0, 5))} - {formatTime(booking.end_time).slice(0, 5)}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {booking.turf.location?.city || 'Location not available'} • ₹{booking.totalAmount}
+                            {booking.turf.location || 'Location not available'} • ₹{booking.total_price}
                           </Typography>
                         </Box>
                       }
                     />
                     <Box display="flex" alignItems="center" gap={1}>
                       <Chip
-                        label={booking.status}
-                        color={getStatusColor(booking.status) as any}
+                        label={booking.status_text}
+                        color={getStatusColor(booking.status_text) as any}
                         size="small"
                       />
-                      <Chip
+                      {/* <Chip
                         label={booking.paymentStatus}
                         color={booking.paymentStatus === 'paid' ? 'success' : 'warning'}
                         size="small"
-                      />
+                      /> */}
                     </Box>
                   </ListItem>
                   {index < recentBookings.length - 1 && <Divider />}
