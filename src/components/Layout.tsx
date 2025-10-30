@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -12,6 +12,7 @@ import {
   Avatar,
   useTheme,
   useMediaQuery,
+  Badge,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -21,12 +22,17 @@ import {
   Event,
   Person,
   Logout,
+  Group,
+  Notifications as BellIcon,
 } from '@mui/icons-material';
 import NotificationBell from './NotificationBell';
 import Logo from './Logo';
 import { AnimatedBox } from './VisualEffects';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { NotificationCenter } from './teams/NotificationCenter';
+
+import { Notification, Team } from '../types/team';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
@@ -35,8 +41,32 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const [mobileMenuAnchor, setMobileMenuAnchor] = React.useState<null | HTMLElement>(null);
+  const [userTeams, setUserTeams] = useState<Team[]>([
+    {
+      id: '1',
+      name: 'Thunder FC',
+      sport: 'Football',
+      players: 11,
+      rating: 1200,
+      wins: 5,
+      losses: 2,
+      location: 'Downtown Arena',
+      members: [
+        { id: 'm1', name: 'John Doe', role: 'captain', available: true },
+        { id: 'm2', name: 'Mike Smith', role: 'player', available: true },
+        { id: 'm3', name: 'Sarah Johnson', role: 'player', available: true },
+      ],
+      isAvailable: false,
+      availableSlots: [],
+    },
+  ]);
+
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [mobileMenuAnchor, setMobileMenuAnchor] = useState<null | HTMLElement>(null);
+
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -191,7 +221,33 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         >
           Dashboard
         </Button>
-        <NotificationBell />
+        <IconButton
+              color="inherit"
+              onClick={() => setShowNotifications(!showNotifications)}
+            >
+          <Badge badgeContent={unreadCount} color="error">
+             <BellIcon />
+          </Badge>
+        </IconButton>
+        {showNotifications && (
+          <Box
+            sx={{
+              position: 'fixed',
+              top: 80,
+              right: 16,
+              zIndex: 1300,
+              width: 400,
+              maxWidth: '90vw',
+            }}
+          >
+            <NotificationCenter
+              notifications={notifications}
+              setNotifications={setNotifications}
+              userTeams={userTeams}
+              onClose={() => setShowNotifications(false)}
+            />
+          </Box>
+        )}
         <IconButton
           size="large"
           edge="end"
@@ -447,6 +503,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             {user && user.role === 'user' && (
               
               <>
+               <MenuItem onClick={() => { navigate('/user/teams'); handleMenuClose(); }}>
+                  <Group sx={{ mr: 1 }} />
+                  My Teams
+                </MenuItem>
+                
                 <MenuItem onClick={() => { navigate('/user/bookings'); handleMenuClose(); }}>
                   <BookOnline sx={{ mr: 1 }} />
                   My Bookings
@@ -528,5 +589,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     </Box>
   );
 };
+
 
 export default Layout; 
