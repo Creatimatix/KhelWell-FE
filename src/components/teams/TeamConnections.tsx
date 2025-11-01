@@ -55,6 +55,7 @@ export function TeamConnections({
   const [filterSport, setFilterSport] = useState<string>('all');
   const [filterLocation, setFilterLocation] = useState<string>('all');
 
+  // Send connection request and add notification to header bell
   const handleSendConnection = (fromTeamId: string, toTeamId: string) => {
     const newConnection: Connection = {
       id: Date.now().toString(),
@@ -67,8 +68,8 @@ export function TeamConnections({
     setConnections([...connections, newConnection]);
 
     const fromTeam = userTeams.find((t) => t.id === fromTeamId);
-    const toTeam = SUGGESTED_TEAMS.find((t) => t.id === toTeamId);
 
+    // Add notification that will appear in the header bell
     addNotification({
       type: 'connection_request',
       message: `${fromTeam?.name} sent you a connection request`,
@@ -79,6 +80,7 @@ export function TeamConnections({
     toast.success('Connection request sent!');
   };
 
+  // Accept connection and add notification to header bell
   const handleAcceptConnection = (connectionId: string) => {
     setConnections(
       connections.map((conn) =>
@@ -91,6 +93,7 @@ export function TeamConnections({
       const fromTeam = userTeams.find((t) => t.id === connection.fromTeamId) || 
                        SUGGESTED_TEAMS.find((t) => t.id === connection.fromTeamId);
       
+      // Add notification that will appear in the header bell
       addNotification({
         type: 'connection_accepted',
         message: `Connection accepted! You are now connected with ${fromTeam?.name}`,

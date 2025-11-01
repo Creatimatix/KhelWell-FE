@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, createContext, useContext } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -25,22 +25,40 @@ import {
   Group,
   Notifications as BellIcon,
 } from '@mui/icons-material';
-import NotificationBell from './NotificationBell';
 import Logo from './Logo';
 import { AnimatedBox } from './VisualEffects';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { NotificationCenter } from './teams/NotificationCenter';
 
 import { Notification, Team } from '../types/team';
 
+// Centralized notification context for team-related notifications
+// This allows any child component to add notifications that appear in the header bell
+interface NotificationContextType {
+  addNotification: (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => void;
+  userTeams: Team[];
+  setUserTeams: (teams: Team[]) => void;
+}
+
+const NotificationContext = createContext<NotificationContextType | null>(null);
+
+// Hook to access notification functions from child components
+export const useNotification = () => {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error('useNotification must be used within Layout');
+  }
+  return context;
+};
+
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  // Centralized state for user teams
   const [userTeams, setUserTeams] = useState<Team[]>([
     {
       id: '1',
@@ -64,9 +82,22 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [mobileMenuAnchor, setMobileMenuAnchor] = useState<null | HTMLElement>(null);
 
+  // Centralized notification state - all notifications appear in header bell
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  // Function to add notifications from any child component
+  // This is the centralized notification handler that adds notifications to the header bell
+  const addNotification = (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
+    const newNotification: Notification = {
+      ...notification,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      read: false,
+    };
+    setNotifications([newNotification, ...notifications]);
+  };
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -99,6 +130,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       default:
         return '/';
     }
+  };
+
+  // Provide notification context to all child components
+  const notificationContextValue: NotificationContextType = {
+    addNotification,
+    userTeams,
+    setUserTeams,
   };
 
 
@@ -404,17 +442,18 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <AppBar 
-        position="static"
-        sx={{
-          background: 'linear-gradient(135deg, #2e7d32 0%, #4caf50 100%)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          backdropFilter: 'blur(10px)',
-          borderBottom: '1px solid rgba(255,255,255,0.1)'
-        }}
-      >
-        <Toolbar>
+    <NotificationContext.Provider value={notificationContextValue}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <AppBar 
+          position="static"
+          sx={{
+            background: 'linear-gradient(135deg, #2e7d32 0%, #4caf50 100%)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+            backdropFilter: 'blur(10px)',
+            borderBottom: '1px solid rgba(255,255,255,0.1)'
+          }}
+        >
+          <Toolbar>
           <Box
             sx={{ 
               flexGrow: 1, 
@@ -586,9 +625,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </Typography>
         </Container>
       </Box>
-    </Box>
+      </Box>
+    </NotificationContext.Provider>
   );
 };
-
 
 export default Layout; 

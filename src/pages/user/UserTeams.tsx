@@ -2,28 +2,20 @@ import { useState } from 'react';
 import {
   Box,
   Container,
-  AppBar,
-  Toolbar,
-  Typography,
-  IconButton,
-  Badge,
   Tabs,
   Tab,
   Paper,
   ThemeProvider,
   CssBaseline,
 } from '@mui/material';
-import {
-  EmojiEvents as TrophyIcon,
-  Notifications as BellIcon,
-} from '@mui/icons-material';
 import { TeamManager } from '../../components/teams/TeamManager';
 import { TeamConnections } from '../../components/teams/TeamConnections';
 import { TeamAvailability } from '../../components/teams/TeamAvailability';
 import { MatchChallenges } from '../../components/teams/MatchChallenges';
-import { NotificationCenter } from '../../components/teams/NotificationCenter';
 import { theme } from '../../pages/user/teamTheme';
-import { Team, Connection, MatchChallenge, Notification } from '../../types/team';
+import { useNotification } from '../../components/Layout';
+import { Connection, MatchChallenge } from '../../types/team';
+import { UserPublicProfile } from './UserPublicProfile';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -41,90 +33,19 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function UserTeams() {
-  const [userTeams, setUserTeams] = useState<Team[]>([
-    {
-      id: '1',
-      name: 'Thunder FC',
-      sport: 'Football',
-      players: 11,
-      rating: 1200,
-      wins: 5,
-      losses: 2,
-      location: 'Downtown Arena',
-      members: [
-        { id: 'm1', name: 'John Doe', role: 'captain', available: true },
-        { id: 'm2', name: 'Mike Smith', role: 'player', available: true },
-        { id: 'm3', name: 'Sarah Johnson', role: 'player', available: true },
-      ],
-      isAvailable: false,
-      availableSlots: [],
-    },
-  ]);
+  // Get centralized notification function and user teams from Layout context
+  // All notifications will appear in the header bell at the top of the page
+  const { addNotification, userTeams, setUserTeams } = useNotification();
 
   const [connections, setConnections] = useState<Connection[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [matchChallenges, setMatchChallenges] = useState<MatchChallenge[]>([]);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [currentTab, setCurrentTab] = useState(0);
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  const addNotification = (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
-    const newNotification: Notification = {
-      ...notification,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      read: false,
-    };
-    setNotifications([newNotification, ...notifications]);
-  };
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="sticky" color="primary" elevation={1}>
-          <Toolbar>
-            <TrophyIcon sx={{ mr: 2, fontSize: 32 }} />
-            <Box sx={{ flexGrow: 1 }}>
-              <Typography variant="h6" component="div">
-                Sports Team Manager
-              </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                Connect, compete, and build your legacy
-              </Typography>
-            </Box>
-            <IconButton
-              color="inherit"
-              onClick={() => setShowNotifications(!showNotifications)}
-            >
-              <Badge badgeContent={unreadCount} color="error">
-                <BellIcon />
-              </Badge>
-            </IconButton>
-          </Toolbar>
-        </AppBar>
-
-        {showNotifications && (
-          <Box
-            sx={{
-              position: 'fixed',
-              top: 80,
-              right: 16,
-              zIndex: 1300,
-              width: 400,
-              maxWidth: '90vw',
-            }}
-          >
-            <NotificationCenter
-              notifications={notifications}
-              setNotifications={setNotifications}
-              userTeams={userTeams}
-              onClose={() => setShowNotifications(false)}
-            />
-          </Box>
-        )}
-
+      
         <Container maxWidth="xl" sx={{ py: 4 }}>
           <Paper sx={{ mb: 3 }}>
             <Tabs
@@ -138,6 +59,8 @@ export default function UserTeams() {
               <Tab label="Availability" />
               <Tab label="Matches" />
               <Tab label="Find Teams" />
+              <Tab label="Public Profile" />
+              
             </Tabs>
           </Paper>
 
@@ -145,6 +68,8 @@ export default function UserTeams() {
             <TeamManager userTeams={userTeams} setUserTeams={setUserTeams} />
           </TabPanel>
 
+          {/* Pass addNotification function to team components 
+              All notifications from team actions will appear in the header bell */}
           <TabPanel value={currentTab} index={1}>
             <TeamConnections
               userTeams={userTeams}
@@ -183,6 +108,11 @@ export default function UserTeams() {
               showSuggestions={true}
             />
           </TabPanel>
+
+          <TabPanel value={currentTab} index={5}>
+            <UserPublicProfile userTeams={userTeams} />
+          </TabPanel>
+
         </Container>
       </Box>
     </ThemeProvider>

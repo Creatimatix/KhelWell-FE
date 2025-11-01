@@ -22,7 +22,6 @@ import {
   AccessTime as ClockIcon,
   Groups as UsersIcon,
   CheckCircle as CheckCircleIcon,
-  Add as AddIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
@@ -44,6 +43,7 @@ export function TeamAvailability({
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');
   const [timeSlot, setTimeSlot] = useState('');
 
+  // Toggle team availability and notify connected teams via header bell
   const handleToggleAvailability = (teamId: string, isAvailable: boolean) => {
     setUserTeams(
       userTeams.map((team) =>
@@ -59,6 +59,7 @@ export function TeamAvailability({
                 (conn.fromTeamId === teamId || conn.toTeamId === teamId))
         .map((conn) => conn.fromTeamId === teamId ? conn.toTeamId : conn.fromTeamId);
 
+      // Add notifications that will appear in the header bell for each connected team
       connectedTeamIds.forEach((connectedId) => {
         addNotification({
           type: 'team_available',

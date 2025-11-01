@@ -84,6 +84,7 @@ export function MatchChallenges({
   });
   const [counterTime, setCounterTime] = useState('');
 
+  // Send match challenge and add notification to header bell
   const handleSendChallenge = () => {
     if (!challengeData.myTeamId || !challengeData.opponentTeamId) {
       toast.error('Please select both teams');
@@ -104,6 +105,7 @@ export function MatchChallenges({
 
     const myTeam = userTeams.find((t) => t.id === challengeData.myTeamId);
 
+    // Add notification that will appear in the header bell
     addNotification({
       type: 'match_request',
       message: `${myTeam?.name} sent you a match challenge${challengeData.proposedTime ? ` for ${challengeData.proposedTime}` : ''}`,
@@ -116,6 +118,7 @@ export function MatchChallenges({
     setIsChallengeDialogOpen(false);
   };
 
+  // Accept match challenge and add notification to header bell
   const handleAcceptChallenge = (challengeId: string) => {
     setMatchChallenges(
       matchChallenges.map((ch) =>
@@ -128,6 +131,7 @@ export function MatchChallenges({
       const fromTeam = userTeams.find((t) => t.id === challenge.fromTeamId) ||
                        SUGGESTED_TEAMS.find((t) => t.id === challenge.fromTeamId);
 
+      // Add notification that will appear in the header bell
       addNotification({
         type: 'match_confirmed',
         message: `Match confirmed with ${fromTeam?.name}${challenge.proposedTime ? ` at ${challenge.proposedTime}` : ''}!`,
@@ -148,6 +152,7 @@ export function MatchChallenges({
     toast.error('Match challenge declined');
   };
 
+  // Counter propose match time and add notification to header bell
   const handleCounterPropose = () => {
     if (!counterTime.trim() || !selectedChallenge) {
       toast.error('Please enter a proposed time');
@@ -165,6 +170,7 @@ export function MatchChallenges({
     const challenge = selectedChallenge;
     const myTeam = userTeams.find((t) => t.id === challenge.toTeamId);
 
+    // Add notification that will appear in the header bell
     addNotification({
       type: 'match_request',
       message: `${myTeam?.name} proposed a different time: ${counterTime}`,

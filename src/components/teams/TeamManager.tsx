@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, ChangeEvent } from 'react';
 import {
   Box,
   Card,
@@ -22,6 +22,8 @@ import {
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
+  Avatar,
+  CircularProgress,
 } from '@mui/material';
 import {
   Add as PlusIcon,
@@ -31,11 +33,30 @@ import {
   PersonAdd as UserPlusIcon,
   EmojiEvents as CrownIcon,
   Close as XIcon,
+  CloudUpload as CloudUploadIcon,
+  Image as ImageIcon,
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
 import { Team, TeamMember } from '../../types/team';
+import { teamService } from '../../services/teamService';
 
 const SPORTS_TYPES = ['Football', 'Cricket', 'Basketball', 'Volleyball', 'Tennis', 'Badminton'];
+
+/**
+ * TeamManager Component
+ * 
+ * Features:
+ * - Create teams with image upload support
+ * - API Integration: Calls /team/create endpoint with FormData for file upload
+ * - Image validation: Max 5MB, images only
+ * - Preview uploaded logo before submission
+ * - Display team logos in team cards
+ * - Manage team members
+ * 
+ * API Endpoint: POST /team/create
+ * Request: FormData with fields (name, sport, players, location, logo)
+ * Response: Team object with created team data
+ */
 
 interface TeamManagerProps {
   userTeams: Team[];
@@ -53,31 +74,84 @@ export function TeamManager({ userTeams, setUserTeams }: TeamManagerProps) {
     players: '',
     location: '',
   });
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleCreateTeam = () => {
+  // Handle logo file selection and preview
+  const handleLogoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type (images only)
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select a valid image file');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size should be less than 5MB');
+        return;
+      }
+
+      setLogoFile(file);
+
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Remove selected logo
+  const handleRemoveLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Create team with API call including logo upload
+  const handleCreateTeam = async () => {
     if (!formData.name || !formData.sport || !formData.players) {
       toast.error('Please fill all required fields');
       return;
     }
 
-    const newTeam: Team = {
-      id: Date.now().toString(),
-      name: formData.name,
-      sport: formData.sport,
-      players: parseInt(formData.players),
-      rating: 1000,
-      wins: 0,
-      losses: 0,
-      location: formData.location || 'Not specified',
-      members: [],
-      isAvailable: false,
-      availableSlots: [],
-    };
+    setIsCreating(true);
 
-    setUserTeams([...userTeams, newTeam]);
-    setFormData({ name: '', sport: '', players: '', location: '' });
-    setIsOpen(false);
-    toast.success('Team created successfully!');
+    try {
+      // Prepare team data for API
+      const teamData = {
+        name: formData.name,
+        sport: formData.sport,
+        players: parseInt(formData.players),
+        location: formData.location || undefined,
+        logo: logoFile || undefined,
+      };
+
+      // Call API to create team
+      const newTeam = await teamService.createTeam(teamData);
+
+      // Update local state with the response from backend
+      setUserTeams([...userTeams, newTeam]);
+
+      // Reset form
+      setFormData({ name: '', sport: '', players: '', location: '' });
+      setLogoFile(null);
+      setLogoPreview(null);
+      setIsOpen(false);
+      toast.success('Team created successfully!');
+    } catch (error: any) {
+      console.error('Error creating team:', error);
+      toast.error(error.response?.data?.message || 'Failed to create team. Please try again.');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleAddMember = () => {
@@ -186,13 +260,27 @@ export function TeamManager({ userTeams, setUserTeams }: TeamManagerProps) {
                 <Card sx={{ height: '100%', '&:hover': { boxShadow: 6 } }}>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                      <Box>
-                        <Typography variant="h6" gutterBottom>
-                          {team.name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {team.sport} • {team.location}
-                        </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        {/* Display team logo if available */}
+                        {team.logo ? (
+                          <Avatar
+                            src={typeof team.logo === 'string' ? team.logo : URL.createObjectURL(team.logo)}
+                            alt={team.name}
+                            sx={{ width: 48, height: 48 }}
+                          />
+                        ) : (
+                          <Avatar sx={{ width: 48, height: 48, bgcolor: 'primary.main' }}>
+                            {team.name.charAt(0).toUpperCase()}
+                          </Avatar>
+                        )}
+                        <Box>
+                          <Typography variant="h6" gutterBottom>
+                            {team.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {team.sport} • {team.location}
+                          </Typography>
+                        </Box>
                       </Box>
                       <Chip label={team.sport} size="small" />
                     </Box>
@@ -296,11 +384,66 @@ export function TeamManager({ userTeams, setUserTeams }: TeamManagerProps) {
         </Grid>
       )}
 
-      {/* Create Team Dialog */}
+      {/* Create Team Dialog with Logo Upload */}
       <Dialog open={isOpen} onClose={() => setIsOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Create New Team</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            {/* Team Logo Upload Section */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleLogoChange}
+                style={{ display: 'none' }}
+              />
+              
+              {logoPreview ? (
+                <Box sx={{ position: 'relative' }}>
+                  <Avatar
+                    src={logoPreview}
+                    alt="Team Logo Preview"
+                    sx={{ width: 120, height: 120 }}
+                  />
+                  <IconButton
+                    onClick={handleRemoveLogo}
+                    sx={{
+                      position: 'absolute',
+                      top: -8,
+                      right: -8,
+                      bgcolor: 'error.main',
+                      color: 'white',
+                      '&:hover': { bgcolor: 'error.dark' },
+                    }}
+                  >
+                    <XIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              ) : (
+                <Avatar
+                  sx={{ width: 120, height: 120, bgcolor: 'grey.300', cursor: 'pointer' }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <ImageIcon sx={{ fontSize: 60 }} />
+                </Avatar>
+              )}
+              
+              {!logoPreview && (
+                <Button
+                  variant="outlined"
+                  startIcon={<CloudUploadIcon />}
+                  onClick={() => fileInputRef.current?.click()}
+                  size="small"
+                >
+                  Upload Team Logo (Optional)
+                </Button>
+              )}
+              <Typography variant="caption" color="text.secondary" align="center">
+                Max size: 5MB • Recommended: Square images
+              </Typography>
+            </Box>
+
             <TextField
               label="Team Name"
               fullWidth
@@ -340,9 +483,16 @@ export function TeamManager({ userTeams, setUserTeams }: TeamManagerProps) {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setIsOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleCreateTeam}>
-            Create Team
+          <Button onClick={() => setIsOpen(false)} disabled={isCreating}>
+            Cancel
+          </Button>
+          <Button 
+            variant="contained" 
+            onClick={handleCreateTeam}
+            disabled={isCreating}
+            startIcon={isCreating ? <CircularProgress size={20} /> : null}
+          >
+            {isCreating ? 'Creating...' : 'Create Team'}
           </Button>
         </DialogActions>
       </Dialog>
