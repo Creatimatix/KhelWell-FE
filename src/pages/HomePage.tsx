@@ -193,7 +193,7 @@ const HomePage: React.FC = () => {
                       <Typography variant="body2">{f.desc}</Typography>
                     </Box>
                   </Box>
-                ))}
+                ))} 
                 <Box mt={2} p={2} bgcolor="#e8f5e9" borderRadius={2}>
                   <Typography variant="body1" fontWeight="bold">
                     🎉 Join the Sports Revolution!
