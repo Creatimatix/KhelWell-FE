@@ -523,7 +523,7 @@ const HomePage: React.FC = () => {
   const quickFeatures = [
     {
       title: "Search playgrounds",
-      desc: "Filter by sport, location, date and amenities. Preview turf photos, pricing and available slots.",
+      desc: "Filter by sport, location, date and amenities. Preview playground photos, pricing and available slots.",
       icon: <Search fontSize="large" sx={{ color: THEME_COLORS.primary }} />,
     },
     {
